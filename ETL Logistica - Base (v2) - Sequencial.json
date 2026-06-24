@@ -1,0 +1,1675 @@
+{
+  "name": "ETL Logistica - Base (v2) - Sequencial",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 20
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        17232,
+        13104
+      ],
+      "id": "a9a1e66d-fbbd-4d46-a13d-3d3bcbaebe14",
+      "name": "Agendado a cada 20 minutos"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ULTIMO_ESTAGIO AS\n(\n  SELECT\n    H.FILIAL,\n    H.PEDIDO,\n    H.SEQUENCIA,\n    H.FLAGTIPOALTERACAO,\n    H.OBSERVACAO,\n    H.DATAHORAINCLUSAO,\n    H.DATAHORAALTERACAO,\n    P.DATA_EMISSAO,\n    P.STATUS,\n    ROW_NUMBER() OVER\n    (\n      PARTITION BY\n        H.FILIAL,\n        H.PEDIDO\n      ORDER BY\n        H.SEQUENCIA DESC,\n        H.DATAHORAINCLUSAO DESC -- Desempate para garantir unicidade\n    ) AS RN\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n  INNER JOIN VDPVENDAC P WITH (NOLOCK)\n    ON P.PEDIDO = H.PEDIDO\n  WHERE P.DATA_EMISSAO >= '2026-01-01'\n)\nSELECT \n  FILIAL AS filial,\n  PEDIDO AS pedido,\n  STATUS AS status,\n  SEQUENCIA AS sequencia,\n  FLAGTIPOALTERACAO AS flag_tipo_alteracao,\n  DATA_EMISSAO AS data_pedido,\n  DATAHORAINCLUSAO AS data_hora_inclusao,\n  OBSERVACAO AS observacao,\n  CASE\n    WHEN OBSERVACAO LIKE '%FATURAMENTO E ENTREGA%' THEN 'FATURAMENTO E ENTREGA'\n    WHEN OBSERVACAO LIKE '%FATURAMENTO APROVADO%' THEN 'FATURAMENTO APROVADO'\n    WHEN OBSERVACAO LIKE '%FATURAMENTO REPROVADO%' THEN 'FATURAMENTO REPROVADO'\n    WHEN OBSERVACAO LIKE '%SEPARAÇÃO%' THEN 'SEPARAÇÃO'\n    WHEN OBSERVACAO LIKE '%SEPARADO%' THEN 'SEPARADO'\n    WHEN OBSERVACAO LIKE '%FATURAMENTO%' THEN 'FATURADO'\n    ELSE 'OUTROS'\n  END AS status_resumo,\n  DATAHORAALTERACAO AS data_hora_alteracao,\n  DATEDIFF(DAY, DATAHORAINCLUSAO, GETDATE()) AS dias_no_estagio,\n  GETDATE() AS atualizado_em\nFROM ULTIMO_ESTAGIO\nWHERE RN = 1\nORDER BY\n  dias_no_estagio DESC,\n  pedido;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17952,
+        12416
+      ],
+      "id": "73abf8a0-1757-45af-808b-12f9447a835f",
+      "name": "ERP - Buscar pd_ultimo_estagio",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-pd",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18144,
+        12416
+      ],
+      "id": "0420dc12-9f10-4d68-8a33-9cef697972fc",
+      "name": "Padronizar atualizado_em pd_ultimo_estagio"
+    },
+    {
+      "parameters": {
+        "jsCode": "function esc(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const clean = String(v)\n    .replace(/\\u0000/g, '')\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '')\n    .replace(/'/g, \"''\");\n  return `'${clean}'`;\n}\nfunction escNum(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 'NULL';\n}\n\nconst CHUNK_SIZE = 300;\nconst out = [];\n\nfor (let i = 0; i < items.length; i += CHUNK_SIZE) {\n  const chunk = items.slice(i, i + CHUNK_SIZE);\n  const rows = chunk.map(item => {\n    const j = item.json;\n    return `(${escNum(j.filial)}, ${esc(j.pedido)}, ${esc(j.status)}, ${escNum(j.sequencia)}, ${esc(j.flag_tipo_alteracao)}, ${esc(j.data_pedido)}, ${esc(j.data_hora_inclusao)}, ${esc(j.observacao)}, ${esc(j.status_resumo)}, ${esc(j.data_hora_alteracao)}, ${escNum(j.dias_no_estagio)}, ${esc(j.atualizado_em)})`;\n  }).join(',\\n');\n\n  const sql = `INSERT INTO pd_ultimo_estagio (\n  filial, pedido, status, sequencia, flag_tipo_alteracao,\n  data_pedido, data_hora_inclusao, observacao, status_resumo,\n  data_hora_alteracao, dias_no_estagio, atualizado_em\n) VALUES\n${rows}\nON CONFLICT (filial, pedido) DO UPDATE SET\n  status = EXCLUDED.status,\n  sequencia = EXCLUDED.sequencia,\n  flag_tipo_alteracao = EXCLUDED.flag_tipo_alteracao,\n  data_pedido = EXCLUDED.data_pedido,\n  data_hora_inclusao = EXCLUDED.data_hora_inclusao,\n  observacao = EXCLUDED.observacao,\n  status_resumo = EXCLUDED.status_resumo,\n  data_hora_alteracao = EXCLUDED.data_hora_alteracao,\n  dias_no_estagio = EXCLUDED.dias_no_estagio,\n  atualizado_em = EXCLUDED.atualizado_em;`;\n\n  out.push({ json: { sql, batch: (i / CHUNK_SIZE) + 1, rows: chunk.length } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18320,
+        12416
+      ],
+      "id": "f2468bf2-5a4d-499e-9a20-491063e3146c",
+      "name": "Montar SQL pd_ultimo_estagio"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18560,
+        12416
+      ],
+      "id": "a7be507b-00a8-4260-ab14-6d8258b5e5a7",
+      "name": "Supabase - Upsert pd_ultimo_estagio",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH NF AS\n(\n  SELECT\n    N.PEDIDO,\n    MAX(N.NOTA_FISCAL) AS NOTA_FISCAL,\n    MAX(N.DATA_EMISSAO) AS DT_FATURAMENTO\n  FROM VDNOTAC N WITH (NOLOCK)\n  WHERE N.FILIAL = 11\n    AND N.MOVIMENTACAO_FISCAL IN\n    (\n      5102,\n      6102,\n      6108,\n      6117,\n      6923\n    )\n  GROUP BY\n    N.PEDIDO\n)\n\nSELECT\n  PVI.PEDIDO as pedido,\n  PVC.DATA_EMISSAO AS data_emissao,\n  PVI.PESSOA AS cliente,\n  PES.NOME AS nome_cliente,\n  PVC.VENDEDOR as vendedor,\n  PVE.NOME AS nome_vendedor,\n  PVC.valor_total,\n\n  SUM(PVI.QUANTIDADEFATURADA) AS qtd_faturada,\n  SUM(PVI.QTDE_ENTREGUE) AS qtd_entregue,\n  SUM(PVI.QUANTIDADEFATURADA - PVI.QTDE_ENTREGUE) AS diferenca,\n\n  NF.NOTA_FISCAL as nota_fiscal,\n  NF.DT_FATURAMENTO as dt_faturamento,\n\n  GETDATE() AS atualizado_em\n\nFROM VDPVENDAI PVI WITH (NOLOCK)\n\nLEFT JOIN CGPESSOA PES WITH (NOLOCK)\n  ON PES.PESSOA = PVI.PESSOA\n\nLEFT JOIN VDPVENDAC PVC WITH (NOLOCK)\n  ON PVC.EMPRESA = PVI.EMPRESA\n AND PVC.FILIAL = PVI.FILIAL\n AND PVC.COLECAO = PVI.COLECAO\n AND PVC.PESSOA = PVI.PESSOA\n AND PVC.PEDIDO = PVI.PEDIDO\n\nLEFT JOIN CGPESSOA PVE WITH (NOLOCK)\n  ON PVE.PESSOA = PVC.VENDEDOR\n\nLEFT JOIN NF\n  ON NF.PEDIDO = PVC.PEDIDOSEQUENCIAL\n\nWHERE PVC.DEPARTAMENTOVENDEDOR = 25\n  AND PVI.QUANTIDADEFATURADA > PVI.QTDE_ENTREGUE\n\nGROUP BY\n  PVI.PEDIDO,\n  PVC.DATA_EMISSAO,\n  PVI.PESSOA,\n  PES.NOME,\n  PVC.VENDEDOR,\n  PVE.NOME,\n  PVC.VALOR_TOTAL,\n  NF.NOTA_FISCAL,\n  NF.DT_FATURAMENTO\n\nORDER BY\n  NF.NOTA_FISCAL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17952,
+        12672
+      ],
+      "id": "2fdd2339-62f3-4a28-90a7-151be95ffca5",
+      "name": "ERP - Buscar mo_3104",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-mo",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18144,
+        12672
+      ],
+      "id": "567a1232-ea5d-4a81-82d0-5da8d1a61a70",
+      "name": "Padronizar atualizado_em mo_3104"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mo_3104",
+          "mode": "list",
+          "cachedResultName": "mo_3104"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "pedido"
+          ],
+          "schema": [
+            {
+              "id": "pedido",
+              "displayName": "pedido",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "data_emissao",
+              "displayName": "data_emissao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "cliente",
+              "displayName": "cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "nome_cliente",
+              "displayName": "nome_cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "vendedor",
+              "displayName": "vendedor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "nome_vendedor",
+              "displayName": "nome_vendedor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "valor_total",
+              "displayName": "valor_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "qtd_faturada",
+              "displayName": "qtd_faturada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "qtd_entregue",
+              "displayName": "qtd_entregue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "diferenca",
+              "displayName": "diferenca",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "nota_fiscal",
+              "displayName": "nota_fiscal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "dt_faturamento",
+              "displayName": "dt_faturamento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18320,
+        12672
+      ],
+      "id": "37a9fd12-9f7d-4c5c-be9d-1a98487976ef",
+      "name": "Supabase - Upsert mo_3104",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.pd_ultimo_estagio\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18816,
+        12416
+      ],
+      "id": "ef467ba6-b7ac-4606-8602-19b34d0644c6",
+      "name": "Supabase - Limpar obsoletos pd_ultimo_estagio",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.mo_3104\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18512,
+        12672
+      ],
+      "id": "9f302c35-b275-40b4-83d2-b4afa5e5c9b6",
+      "name": "Supabase - Limpar obsoletos mo_3104",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  PVC.PEDIDO AS id_pedido,\n  PVC.DATA_EMISSAO AS dt_pedido_emissao,\n  PVC.PESSOA AS id_cliente,\n  PVC.VENDEDOR AS id_vendedor,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  T.NOME AS transportadora,\n  GETDATE() AS atualizado_em,\n  PVE.NOME AS nome_vendedor\nFROM VDPVENDAC PVC WITH (NOLOCK)\nINNER JOIN CGPESSOA T WITH (NOLOCK)\n  ON T.PESSOA = PVC.TRANSPORTADORA\nLEFT JOIN CGPESSOA PVE WITH (NOLOCK)\n  ON PVE.PESSOA = PVC.VENDEDOR\nWHERE PVC.DATA_EMISSAO >= '2026-01-01'\n  AND PVC.STATUS = 'E'\n  AND PVC.TRANSPORTADORA IN (5261, 10252, 53287, 56802, 71820, 74375, 77582, 125081, 145688)\n  AND NOT EXISTS\n  (\n    SELECT 1\n    FROM VDPVENDACODIGOAUXILIAR COD WITH (NOLOCK)\n    WHERE COD.PEDIDO = PVC.PEDIDO\n      AND COD.FILIAL = PVC.FILIAL\n      AND COD.FLAGPERFILCODIGO = 801\n  );",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17952,
+        12928
+      ],
+      "id": "58c96920-2af1-4b2d-9042-96352277863a",
+      "name": "ERP - Buscar pd_sem_intelipost",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-intelipost",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18144,
+        12928
+      ],
+      "id": "2a99bca6-65e7-4c49-a8e1-8d6468e8b020",
+      "name": "Padronizar atualizado_em pd_sem_intelipost"
+    },
+    {
+      "parameters": {
+        "jsCode": "function esc(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const clean = String(v)\n    .replace(/\\u0000/g, '')\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '')\n    .replace(/'/g, \"''\");\n  return `'${clean}'`;\n}\n\nconst CHUNK_SIZE = 300;\nconst out = [];\n\nfor (let i = 0; i < items.length; i += CHUNK_SIZE) {\n  const chunk = items.slice(i, i + CHUNK_SIZE);\n  const rows = chunk.map(item => {\n    const j = item.json;\n    return `(${esc(j.id_pedido)}, ${esc(j.dt_pedido_emissao)}, ${esc(j.id_cliente)}, ${esc(j.id_vendedor)}, ${esc(j.id_transportadora)}, ${esc(j.transportadora)}, ${esc(j.atualizado_em)}, ${esc(j.nome_vendedor)})`;\n  }).join(',\\n');\n\n  const sql = `INSERT INTO pd_sem_intelipost (\n  id_pedido, dt_pedido_emissao, id_cliente, id_vendedor, id_transportadora, transportadora, atualizado_em, nome_vendedor\n) VALUES\n${rows}\nON CONFLICT (id_pedido) DO UPDATE SET\n  dt_pedido_emissao = EXCLUDED.dt_pedido_emissao,\n  id_cliente = EXCLUDED.id_cliente,\n  id_vendedor = EXCLUDED.id_vendedor,\n  id_transportadora = EXCLUDED.id_transportadora,\n  transportadora = EXCLUDED.transportadora,\n  atualizado_em = EXCLUDED.atualizado_em,\n  nome_vendedor = EXCLUDED.nome_vendedor;`;\n\n  out.push({ json: { sql, batch: (i / CHUNK_SIZE) + 1, rows: chunk.length } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18320,
+        12928
+      ],
+      "id": "de41503c-7261-4c93-bd7f-be6c7d40412a",
+      "name": "Montar SQL pd_sem_intelipost"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18560,
+        12928
+      ],
+      "id": "b3c0ec38-9f24-45e0-9544-1536522847c6",
+      "name": "Supabase - Upsert pd_sem_intelipost",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.pd_sem_intelipost\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18816,
+        12928
+      ],
+      "id": "65970951-d3e6-46a8-8d79-deda7ffe3a16",
+      "name": "Supabase - Limpar obsoletos pd_sem_intelipost",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  PVC.PEDIDO AS id_pedido,\n  PVC.DATA_EMISSAO AS dt_pedido_emissao,\n  PVC.PESSOA AS id_cliente,\n  PVC.VENDEDOR AS id_vendedor,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  COALESCE(Ultimo.DataHoraAlteracao, PVC.DATA_EMISSAO) AS data_alteracao,\n  Ultimo.FLAGPERFILCODIGO AS flagperfilcodigo,\n  Ultimo.FLAGSITUACAO AS flagsituacao,\n  CASE Ultimo.FLAGSITUACAO\n    WHEN 801 THEN 'Pedido criado'\n    WHEN 802 THEN 'Nota fiscal emitida'\n    WHEN 803 THEN 'Aguardando despacho'\n    WHEN 811 THEN 'Despachado/Coletado'\n    WHEN 812 THEN 'Em trânsito'\n    WHEN 813 THEN 'Em transferência'\n    WHEN 814 THEN 'Em rota de entrega'\n    WHEN 821 THEN 'Tentativa de entrega'\n    WHEN 822 THEN 'Reagendado'\n    WHEN 831 THEN 'Entregue'\n    WHEN 832 THEN 'Entrega realizada parcialmente'\n    WHEN 841 THEN 'Atrasado'\n    WHEN 842 THEN 'Extraviado'\n    WHEN 843 THEN 'Devolvido ao remetente'\n    WHEN 844 THEN 'Recusado pelo destinatário'\n    WHEN 851 THEN 'Solicitação de devolução'\n    WHEN 852 THEN 'Coleta reversa em andamento'\n    WHEN 853 THEN 'Devolução concluída'\n    ELSE 'OUTRO'\n  END AS desc_situacao,\n  T.NOME AS transportadora\nFROM VDPVENDAC PVC WITH (NOLOCK)\nINNER JOIN CGPESSOA T WITH (NOLOCK)\n  ON T.PESSOA = PVC.TRANSPORTADORA\nCROSS APPLY\n(\n  SELECT TOP 1\n    COD.DataHoraAlteracao,\n    COD.FLAGPERFILCODIGO,\n    COD.FLAGSITUACAO\n  FROM VDPVENDACODIGOAUXILIAR COD WITH (NOLOCK)\n  WHERE COD.PEDIDO = PVC.PEDIDO\n    AND COD.FILIAL = PVC.FILIAL\n  ORDER BY COD.DataHoraAlteracao DESC, COD.FLAGSITUACAO DESC\n) Ultimo\nWHERE PVC.DATA_EMISSAO >= '2026-01-01'\n  AND PVC.STATUS = 'E'\n  AND Ultimo.FLAGSITUACAO IN (801, 811);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17952,
+        13216
+      ],
+      "id": "817368f4-f44f-41d9-a62e-562f43bc274e",
+      "name": "ERP - Buscar pd_criado_despachado_intelipost",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-criado-despachado",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18144,
+        13216
+      ],
+      "id": "e5cc384e-d961-4945-8a62-fe7785334561",
+      "name": "Padronizar atualizado_em pd_criado_despachado_intelipost"
+    },
+    {
+      "parameters": {
+        "jsCode": "function esc(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const clean = String(v)\n    .replace(/\\u0000/g, '')\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '')\n    .replace(/'/g, \"''\");\n  return `'${clean}'`;\n}\n\nconst CHUNK_SIZE = 300;\nconst out = [];\n\nfor (let i = 0; i < items.length; i += CHUNK_SIZE) {\n  const chunk = items.slice(i, i + CHUNK_SIZE);\n  const rows = chunk.map(item => {\n    const j = item.json;\n    return `(${esc(j.id_pedido)}, ${esc(j.dt_pedido_emissao)}, ${esc(j.id_cliente)}, ${esc(j.id_vendedor)}, ${esc(j.id_transportadora)}, ${esc(j.transportadora)}, ${esc(j.flagperfilcodigo)}, ${esc(j.flagsituacao)}, ${esc(j.desc_situacao)}, ${esc(j.data_alteracao)}, ${esc(j.atualizado_em)})`;\n  }).join(',\\n');\n\n  const sql = `INSERT INTO pd_criado_despachado_intelipost (\n  id_pedido, dt_pedido_emissao, id_cliente, id_vendedor, id_transportadora, transportadora, flagperfilcodigo, flagsituacao, desc_situacao, data_alteracao, atualizado_em\n) VALUES\n${rows}\nON CONFLICT (id_pedido) DO UPDATE SET\n  dt_pedido_emissao = EXCLUDED.dt_pedido_emissao,\n  id_cliente = EXCLUDED.id_cliente,\n  id_vendedor = EXCLUDED.id_vendedor,\n  id_transportadora = EXCLUDED.id_transportadora,\n  transportadora = EXCLUDED.transportadora,\n  flagperfilcodigo = EXCLUDED.flagperfilcodigo,\n  flagsituacao = EXCLUDED.flagsituacao,\n  desc_situacao = EXCLUDED.desc_situacao,\n  data_alteracao = EXCLUDED.data_alteracao,\n  atualizado_em = EXCLUDED.atualizado_em;`;\n\n  out.push({ json: { sql, batch: (i / CHUNK_SIZE) + 1, rows: chunk.length } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18320,
+        13216
+      ],
+      "id": "43d60bdb-3153-4236-87e8-04a52985fc89",
+      "name": "Montar SQL pd_criado_despachado_intelipost"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18560,
+        13216
+      ],
+      "id": "8ae2ac75-eed2-4b93-8f1a-bcf7b727cad6",
+      "name": "Supabase - Upsert pd_criado_despachado_intelipost",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.pd_criado_despachado_intelipost\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18816,
+        13216
+      ],
+      "id": "774bbf06-2f79-4878-8e06-aac4eab42841",
+      "name": "Supabase - Limpar obsoletos pd_criado_despachado_intelipost",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ULTIMO_HISTORICO AS\n(\n  SELECT\n    H.FILIAL,\n    H.PEDIDO,\n    H.OBSERVACAO,\n    CASE\n      WHEN OBSERVACAO LIKE '%FATURAMENTO E ENTREGA%' THEN 'FATURAMENTO E ENTREGA'\n      WHEN OBSERVACAO LIKE '%FATURAMENTO APROVADO%' THEN 'FATURAMENTO APROVADO'\n      WHEN OBSERVACAO LIKE '%FATURAMENTO REPROVADO%' THEN 'FATURAMENTO REPROVADO'\n      WHEN OBSERVACAO LIKE '%SEPARAÇÃO%' THEN 'SEPARAÇÃO'\n      WHEN OBSERVACAO LIKE '%SEPARADO%' THEN 'SEPARADO'\n      WHEN OBSERVACAO LIKE '%FATURAMENTO%' THEN 'FATURADO'\n      ELSE 'OUTROS'\n    END AS status_resumo,\n    H.DATAHORAINCLUSAO,\n    ROW_NUMBER() OVER\n    (\n      PARTITION BY H.FILIAL, H.PEDIDO\n      ORDER BY\n        H.SEQUENCIA DESC,\n        H.DATAHORAINCLUSAO DESC\n    ) AS RN\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n)\nSELECT\n  PVI.FILIAL       AS filial,\n  PVI.PEDIDO       AS pedido,\n  PVC.DATA_EMISSAO AS data_emissao,\n  VEN.NOME         AS nome_vendedor,\n  CLI.NOME         AS nome_cliente,\n  PVC.VALOR_TOTAL  AS valor_pedido,\n  PVI.ITEM         AS item,\n  PVI.DESCRICAO    AS descricao,\n  PVI.FlagEstagio  AS flag_estagio,\n  PVI.QTDE_PEDIDA              AS qtd_pedida,\n  PVI.QuantidadeFaturada       AS qtd_faturada,\n  PVI.QTDE_ENTREGUE            AS qtd_entregue,\n  PVI.PRECO_UNITARIO           AS valor_unitario,\n  PVI.PERCENTUALDESCONTO       AS percentual_desconto,\n  PVI.VALORDESCONTO            AS valor_desconto,\n  PVI.VALOR_CUSTO              AS valor_custo,\n  (PVI.QTDE_PEDIDA * PVI.PRECO_UNITARIO)                       AS valor_bruto_item,\n  ((PVI.QTDE_PEDIDA * PVI.PRECO_UNITARIO) - PVI.VALORDESCONTO) AS valor_final_item,\n  CASE\n    WHEN PVI.FlagEstagio = 000 THEN 'AGUARDANDO VENDEDOR'\n    WHEN PVI.FlagEstagio = 051 THEN 'ESTOQUE REPROVADO'\n    WHEN PVI.FlagEstagio = 101 THEN 'AGUARDANDO APROVAÇÃO DE ESTOQUE'\n    WHEN PVI.FlagEstagio = 151 THEN 'ESTOQUE APROVADO'\n    WHEN PVI.FlagEstagio = 181 THEN 'ESTOQUE REPROVADO'\n    WHEN PVI.FlagEstagio = 201 THEN 'AGUARDANDO APROVAÇÃO DE FATURAMENTO'\n    WHEN PVI.FlagEstagio = 211 THEN 'AGUARDANDO APROVAÇÃO DE REQUISIÇÃO'\n    WHEN PVI.FlagEstagio = 251 THEN 'FATURAMENTO APROVADO'\n    WHEN PVI.FlagEstagio = 261 THEN 'REQUISIÇÃO APROVADA'\n    WHEN PVI.FlagEstagio = 281 THEN 'FATURAMENTO REPROVADO'\n    WHEN PVI.FlagEstagio = 291 THEN 'REQUISIÇÃO REPROVADA'\n    WHEN PVI.FlagEstagio = 301 THEN 'FATURADO'\n    WHEN PVI.FlagEstagio = 351 THEN 'FATURADO POR REQUISIÇÃO'\n    WHEN PVI.FlagEstagio = 401 THEN 'LIBERADO PARA SEPARAÇÃO'\n    WHEN PVI.FlagEstagio = 451 THEN 'EM SEPARAÇÃO'\n    WHEN PVI.FlagEstagio = 501 THEN 'SEPARADO'\n    WHEN PVI.FlagEstagio = 601 THEN 'ENVIADO'\n    WHEN PVI.FlagEstagio = 701 THEN 'ENTREGUE'\n    ELSE 'OUTRO'\n  END AS desc_estagio,\n  UH.DATAHORAINCLUSAO AS data_hora_inclusao,\n  UH.status_resumo     AS status_resumo_erp\nFROM VDPVENDAI PVI\nINNER JOIN VDPVENDAC PVC WITH (NOLOCK)\n  ON  PVI.empresa = PVC.empresa\n  AND PVI.filial  = PVC.filial\n  AND PVI.COLECAO = PVC.COLECAO\n  AND PVI.pessoa  = PVC.pessoa\n  AND PVI.pedido  = PVC.pedido\nINNER JOIN ULTIMO_HISTORICO UH\n  ON  UH.FILIAL = PVI.FILIAL\n  AND UH.PEDIDO = PVI.PEDIDO\n  AND UH.RN = 1\nINNER JOIN CGPESSOA VEN ON PVC.VENDEDOR = VEN.PESSOA\nINNER JOIN CGPESSOA CLI ON PVC.PESSOA = CLI.PESSOA\nWHERE PVC.DATA_EMISSAO >= '2026-01-01';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17904,
+        13456
+      ],
+      "id": "c5c1bbf7-e416-43a7-875c-b558266036ce",
+      "name": "ERP - Buscar pd_item_estagio1",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-item-estagio",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18096,
+        13456
+      ],
+      "id": "d3560d04-3455-4d91-b3d0-c4232e7eeff5",
+      "name": "Padronizar atualizado_em pd_item_estagio1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function esc(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const clean = String(v)\n    .replace(/\\u0000/g, '')\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '')\n    .replace(/'/g, \"''\");\n  return `'${clean}'`;\n}\nfunction escNum(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 'NULL';\n}\n\n// Dedup: o ERP pode trazer mais de uma linha pro mesmo filial+pedido+item\n// (ex.: entrega parcial do mesmo item, ou fan-out de join). Mantém só uma\n// linha por chave, priorizando o estagio mais atrasado (mesma logica do\n// dashboard, que usa o flag_estagio minimo como \"gargalo\" do pedido), pra\n// nao duplicar a chave dentro do mesmo INSERT (Postgres nao deixa o\n// ON CONFLICT DO UPDATE afetar a mesma linha 2x).\nconst porChave = new Map();\nfor (const it of items) {\n  const j = it.json;\n  const chave = `${j.filial}|${j.pedido}|${j.item}`;\n  const atual = porChave.get(chave);\n  if (!atual || Number(j.flag_estagio) < Number(atual.json.flag_estagio)) {\n    porChave.set(chave, it);\n  }\n}\nconst itemsDedup = Array.from(porChave.values());\n\nconst CHUNK_SIZE = 300;\nconst out = [];\n\nfor (let i = 0; i < itemsDedup.length; i += CHUNK_SIZE) {\n  const chunk = itemsDedup.slice(i, i + CHUNK_SIZE);\n  const rows = chunk.map(item => {\n    const j = item.json;\n    return `(${esc(j.filial)}, ${esc(j.pedido)}, ${esc(j.data_emissao)}, ${esc(j.nome_vendedor)}, ${esc(j.nome_cliente)}, ${escNum(j.valor_pedido)}, ${esc(j.item)}, ${esc(j.descricao)}, ${escNum(j.flag_estagio)}, ${escNum(j.qtd_pedida)}, ${escNum(j.qtd_faturada)}, ${escNum(j.qtd_entregue)}, ${escNum(j.valor_unitario)}, ${escNum(j.percentual_desconto)}, ${escNum(j.valor_desconto)}, ${escNum(j.valor_custo)}, ${escNum(j.valor_bruto_item)}, ${escNum(j.valor_final_item)}, ${esc(j.desc_estagio)}, ${esc(j.data_hora_inclusao)}, ${esc(j.status_resumo_erp)}, ${esc(j.atualizado_em)})`;\n  }).join(',\\n');\n\n  const sql = `INSERT INTO pd_item_estagio (\n  filial, pedido, data_emissao, nome_vendedor, nome_cliente, valor_pedido, item, descricao,\n  flag_estagio, qtd_pedida, qtd_faturada, qtd_entregue, valor_unitario, percentual_desconto,\n  valor_desconto, valor_custo, valor_bruto_item, valor_final_item, desc_estagio,\n  data_hora_inclusao, status_resumo_erp, atualizado_em\n) VALUES\n${rows}\nON CONFLICT (filial, pedido, item) DO UPDATE SET\n  data_emissao = EXCLUDED.data_emissao,\n  nome_vendedor = EXCLUDED.nome_vendedor,\n  nome_cliente = EXCLUDED.nome_cliente,\n  valor_pedido = EXCLUDED.valor_pedido,\n  descricao = EXCLUDED.descricao,\n  flag_estagio = EXCLUDED.flag_estagio,\n  qtd_pedida = EXCLUDED.qtd_pedida,\n  qtd_faturada = EXCLUDED.qtd_faturada,\n  qtd_entregue = EXCLUDED.qtd_entregue,\n  valor_unitario = EXCLUDED.valor_unitario,\n  percentual_desconto = EXCLUDED.percentual_desconto,\n  valor_desconto = EXCLUDED.valor_desconto,\n  valor_custo = EXCLUDED.valor_custo,\n  valor_bruto_item = EXCLUDED.valor_bruto_item,\n  valor_final_item = EXCLUDED.valor_final_item,\n  desc_estagio = EXCLUDED.desc_estagio,\n  data_hora_inclusao = EXCLUDED.data_hora_inclusao,\n  status_resumo_erp = EXCLUDED.status_resumo_erp,\n  atualizado_em = EXCLUDED.atualizado_em;`;\n\n  out.push({ json: { sql, batch: (i / CHUNK_SIZE) + 1, rows: chunk.length } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18272,
+        13456
+      ],
+      "id": "42d448bb-2cea-49a0-827c-57eaa607c9ab",
+      "name": "Montar SQL pd_item_estagio1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18512,
+        13456
+      ],
+      "id": "2e801ec6-c373-452c-bc26-d23b94f585e2",
+      "name": "Supabase - Upsert pd_item_estagio1",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.pd_item_estagio\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18768,
+        13456
+      ],
+      "id": "21bae0b8-1b41-4316-bfbd-d6a565b8d7ac",
+      "name": "Supabase - Limpar obsoletos pd_item_estagio1",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH BASE AS\n(\n  SELECT\n    H.FILIAL AS filial,\n    H.PEDIDO AS pedido,\n    P.STATUS AS status,\n    P.VALOR_TOTAL AS valor_pedido,\n    H.SEQUENCIA AS sequencia,\n    H.FLAGTIPOALTERACAO AS flag_tipo_alteracao,\n    P.DATA_EMISSAO AS data_pedido,\n    H.DATAHORAINCLUSAO AS data_hora_inclusao,\n    H.DATAHORAALTERACAO AS data_hora_alteracao,\n    H.OBSERVACAO AS observacao,\n    CASE\n      WHEN H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n        OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      THEN 'EM SEPARAÇÃO'\n      WHEN H.OBSERVACAO LIKE '%FATURAMENTO%'\n      THEN 'FATURADO'\n      ELSE 'OUTROS'\n    END AS status_resumo,\n    DATEDIFF(DAY, H.DATAHORAINCLUSAO, GETDATE()) AS dias_desde_evento,\n    GETDATE() AS atualizado_em\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n  INNER JOIN VDPVENDAC P WITH (NOLOCK)\n    ON P.PEDIDO = H.PEDIDO\n  WHERE H.DATAHORAINCLUSAO >= DATEADD(DAY, -7, GETDATE())\n    AND (\n         H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%FATURAMENTO%'\n    )\n)\nSELECT *\nFROM BASE\nORDER BY\n  data_hora_inclusao DESC,\n  pedido,\n  sequencia;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17904,
+        13712
+      ],
+      "id": "9d309260-7e0b-4bcb-b3d8-4a7029c47ccd",
+      "name": "ERP - Buscar historico_pedidos",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-historico-pedidos",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18096,
+        13712
+      ],
+      "id": "cf0a8992-16ca-4115-b9ed-2e2d119b6b43",
+      "name": "Padronizar atualizado_em historico_pedidos"
+    },
+    {
+      "parameters": {
+        "jsCode": "function esc(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const clean = String(v)\n    .replace(/\\u0000/g, '')\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '')\n    .replace(/'/g, \"''\");\n  return `'${clean}'`;\n}\nfunction escNum(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 'NULL';\n}\n\n// Dedup: garante 1 linha por filial+pedido+sequencia dentro do mesmo\n// lote (mesma logica usada em pd_item_estagio), pra nao quebrar o\n// ON CONFLICT DO UPDATE caso o ERP traga a mesma chave 2x.\nconst porChave = new Map();\nfor (const it of items) {\n  porChave.set(`${it.json.filial}|${it.json.pedido}|${it.json.sequencia}`, it);\n}\nconst itemsDedup = Array.from(porChave.values());\n\nconst CHUNK_SIZE = 300;\nconst out = [];\n\nfor (let i = 0; i < itemsDedup.length; i += CHUNK_SIZE) {\n  const chunk = itemsDedup.slice(i, i + CHUNK_SIZE);\n  const rows = chunk.map(item => {\n    const j = item.json;\n    return `(${esc(j.filial)}, ${esc(j.pedido)}, ${esc(j.status)}, ${escNum(j.valor_pedido)}, ${escNum(j.sequencia)}, ${esc(j.flag_tipo_alteracao)}, ${esc(j.data_pedido)}, ${esc(j.data_hora_inclusao)}, ${esc(j.data_hora_alteracao)}, ${esc(j.observacao)}, ${esc(j.status_resumo)}, ${escNum(j.dias_desde_evento)}, ${esc(j.atualizado_em)})`;\n  }).join(',\\n');\n\n  const sql = `INSERT INTO historico_pedidos (\n  filial, pedido, status, valor_pedido, sequencia, flag_tipo_alteracao,\n  data_pedido, data_hora_inclusao, data_hora_alteracao, observacao,\n  status_resumo, dias_desde_evento, atualizado_em\n) VALUES\n${rows}\nON CONFLICT (filial, pedido, sequencia) DO UPDATE SET\n  status = EXCLUDED.status,\n  valor_pedido = EXCLUDED.valor_pedido,\n  flag_tipo_alteracao = EXCLUDED.flag_tipo_alteracao,\n  data_pedido = EXCLUDED.data_pedido,\n  data_hora_inclusao = EXCLUDED.data_hora_inclusao,\n  data_hora_alteracao = EXCLUDED.data_hora_alteracao,\n  observacao = EXCLUDED.observacao,\n  status_resumo = EXCLUDED.status_resumo,\n  dias_desde_evento = EXCLUDED.dias_desde_evento,\n  atualizado_em = EXCLUDED.atualizado_em;`;\n\n  out.push({ json: { sql, batch: (i / CHUNK_SIZE) + 1, rows: chunk.length } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18272,
+        13712
+      ],
+      "id": "0be16a96-959a-48a5-82eb-52a37ebc9cf6",
+      "name": "Montar SQL historico_pedidos"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18512,
+        13712
+      ],
+      "id": "c49f6e96-f69c-4432-950e-692a8456e639",
+      "name": "Supabase - Upsert historico_pedidos",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.historico_pedidos\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18768,
+        13712
+      ],
+      "id": "92f10f50-ca42-49e8-9ede-55d85efad7d6",
+      "name": "Supabase - Limpar obsoletos historico_pedidos",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  PVC.EMPRESA AS id_empresa,\n  PVC.FILIAL AS id_filial,\n  PVC.DATA_EMISSAO AS dt_emissao_pedido,\n  NULL AS dt_entrega_pedido, -- TODO: confirmar coluna real no ERP (data de entrega)\n  NULL AS dt_previsao_entrega, -- TODO: confirmar coluna real no ERP (previsão de entrega)\n  NULL AS dt_recebimento_mercadoria, -- TODO: confirmar coluna real no ERP\n  NULL AS dt_inclusao, -- TODO: confirmar coluna real no ERP (data/hora de inclusão do pedido)\n  NULL AS id_forma_pagamento, -- TODO: confirmar coluna real no ERP\n  PVC.PEDIDO AS id_pedido,\n  PVC.PEDIDOSEQUENCIAL AS id_pedido_sequencial,\n  PVC.STATUS AS status_pedido,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  TRANSP.NOME AS nome_transportadora,\n  NULL AS id_coordenador, -- TODO: confirmar coluna real no ERP\n  NULL AS id_departamento, -- TODO: confirmar coluna real no ERP (departamento do pedido, distinto do departamento do vendedor)\n  PVC.DEPARTAMENTOVENDEDOR AS id_departamento_vendedor,\n  PVC.VENDEDOR AS id_vendedor,\n  VEN.NOME AS nome_vendedor,\n  PVC.PESSOA AS id_cliente,\n  CLI.NOME AS nome_cliente,\n  NULL AS cep_obra, -- TODO: confirmar coluna/tabela real no ERP (endereço da obra)\n  NULL AS cidade_obra, -- TODO: confirmar coluna/tabela real no ERP\n  NULL AS uf_obra, -- TODO: confirmar coluna/tabela real no ERP\n  PVC.VALOR_TOTAL AS valor_total_pedido,\n  NULL AS valor_total_servico, -- TODO: confirmar coluna/origem real no ERP\n  NULL AS valor_total_produto, -- TODO: confirmar coluna/origem real no ERP\n  GETDATE() AS atualizado_em\nFROM VDPVENDAC PVC WITH (NOLOCK)\nLEFT JOIN CGPESSOA TRANSP WITH (NOLOCK)\n  ON TRANSP.PESSOA = PVC.TRANSPORTADORA\nLEFT JOIN CGPESSOA VEN WITH (NOLOCK)\n  ON VEN.PESSOA = PVC.VENDEDOR\nLEFT JOIN CGPESSOA CLI WITH (NOLOCK)\n  ON CLI.PESSOA = PVC.PESSOA\nWHERE PVC.DATA_EMISSAO >= '2026-04-01';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17952,
+        13968
+      ],
+      "id": "b8169560-eea5-4ab8-bec7-102e7c0407ff",
+      "name": "ERP - Buscar f_pedido",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-f-pedido",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18144,
+        13968
+      ],
+      "id": "9628deeb-72a2-4e39-add8-a8184f3fcafc",
+      "name": "Padronizar atualizado_em f_pedido"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "f_pedido",
+          "mode": "list",
+          "cachedResultName": "f_pedido"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id_pedido"
+          ],
+          "schema": [
+            {
+              "id": "id_empresa",
+              "displayName": "id_empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_filial",
+              "displayName": "id_filial",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "dt_emissao_pedido",
+              "displayName": "dt_emissao_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "dt_entrega_pedido",
+              "displayName": "dt_entrega_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "dt_previsao_entrega",
+              "displayName": "dt_previsao_entrega",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "dt_recebimento_mercadoria",
+              "displayName": "dt_recebimento_mercadoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "dt_inclusao",
+              "displayName": "dt_inclusao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_forma_pagamento",
+              "displayName": "id_forma_pagamento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_pedido",
+              "displayName": "id_pedido",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_pedido_sequencial",
+              "displayName": "id_pedido_sequencial",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "status_pedido",
+              "displayName": "status_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_transportadora",
+              "displayName": "id_transportadora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "nome_transportadora",
+              "displayName": "nome_transportadora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_coordenador",
+              "displayName": "id_coordenador",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_departamento",
+              "displayName": "id_departamento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_departamento_vendedor",
+              "displayName": "id_departamento_vendedor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_vendedor",
+              "displayName": "id_vendedor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "nome_vendedor",
+              "displayName": "nome_vendedor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "id_cliente",
+              "displayName": "id_cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "nome_cliente",
+              "displayName": "nome_cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "cep_obra",
+              "displayName": "cep_obra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "cidade_obra",
+              "displayName": "cidade_obra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "uf_obra",
+              "displayName": "uf_obra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "valor_total_pedido",
+              "displayName": "valor_total_pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "valor_total_servico",
+              "displayName": "valor_total_servico",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "valor_total_produto",
+              "displayName": "valor_total_produto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18320,
+        13968
+      ],
+      "id": "608504f3-9a6b-4994-a296-c7760bde2e24",
+      "name": "Supabase - Upsert f_pedido",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.f_pedido\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18512,
+        13968
+      ],
+      "id": "7a9d222c-5cd7-47af-a3fd-7ca664078580",
+      "name": "Supabase - Limpar obsoletos f_pedido",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    nf.NOTA_FISCAL                                 AS id_nota_fiscal,\n    nf.FILIAL                                      AS id_filial,\n    nf.SERIE                                       AS serie_nf,\n    nf.DATA_EMISSAO                                AS dt_nf_emissao,\n    nf.MOVIMENTACAO_FISCAL                         AS id_cfop,\n    nf.NATUREZA                                    AS natureza_operacao,\n    nf.ENTRADA_SAIDA                               AS fl_entrada_saida,\n    nf.FLAG_CANCELADO                              AS fl_cancelado,\n    CASE\n        WHEN nf.MOVIMENTACAO_FISCAL IN (\n            1201, 1202, 1410, 1411,\n            2201, 2202, 2410, 2411\n        ) THEN 'Devolucao'\n        WHEN nf.MOVIMENTACAO_FISCAL IN (\n            5101, 5102, 5103, 5104, 5105, 5106, 5109, 5110,\n            5111, 5112, 5113, 5114, 5115, 5116, 5117, 5118,\n            5119, 5120, 5122, 5123, 5124, 5125, 5401, 5402,\n            5403, 5405, 5655, 5656, 6101, 6102, 6103, 6104,\n            6105, 6106, 6107, 6108, 6109, 6110, 6111, 6112,\n            6113, 6114, 6115, 6116, 6117, 6118, 6119, 6120,\n            6122, 6123, 6124, 6125, 6401, 6402, 6403, 6404,\n            6655, 6656\n        ) THEN 'Saida'\n        WHEN nf.MOVIMENTACAO_FISCAL IN (\n            5303, 5933, 6933\n        ) THEN 'Servico'\n        ELSE ''\n    END AS tipo_movimentacao,\n    pvc.STATUS                                     AS status_pedido,\n    com.PESO                                       AS peso,\n    pvc.PEDIDO                                     AS id_pedido,\n    pvc.DATA_EMISSAO                                AS dt_pedido_emissao,\n    pvc.DEPARTAMENTOVENDEDOR                       AS departamento_vendedor,\n    nf.VENDEDOR                                    AS id_vendedor,\n    com.FlagTipoComissao                           AS id_tipo_comissao,\n    nf.PESSOA                                      AS id_cliente,\n    nfi.ITEM                                       AS id_item,\n    nfi.DESCRICAO                                  AS item_descricao,\n    est.REFERENCIA                                 AS item_referencia,\n    nfi.QUANTIDADE                                 AS qtd_item,\n    nfi.VALOR_UNITARIO                             AS valor_unitario,\n    nfi.VALOR_TOTAL                                AS valor_total,\n    NF.VALOR_TOTAL                                 AS valor_total_nf\nFROM VDNOTAC nf WITH (NOLOCK)\nINNER JOIN VDNOTAI nfi WITH (NOLOCK) ON (\n    nf.EMPRESA = nfi.EMPRESA AND\n    nf.FILIAL = nfi.FILIAL AND\n    nf.ENTRADA_SAIDA = nfi.ENTRADA_SAIDA AND\n    nf.PESSOA = nfi.PESSOA AND\n    nf.NOTA_FISCAL = nfi.NOTA_FISCAL AND\n    nf.SERIE = nfi.SERIE\n)\nLEFT OUTER JOIN vdpvendacomissao com WITH (NOLOCK) ON (\n    nf.PEDIDO = com.PedidoSequencial\n    AND com.FlagTipoComissao = 1\n)\nLEFT OUTER JOIN VDPVENDAC pvc WITH (NOLOCK) ON (\n    nf.EMPRESA = pvc.EMPRESA AND\n    nf.PEDIDO = pvc.PEDIDOSEQUENCIAL\n)\nINNER JOIN CEESTRUTURA est WITH (NOLOCK) ON (\n    nfi.EMPRESA = est.EMPRESA AND\n    nfi.ITEM = est.ITEM\n)\nWHERE\n    est.NIVEL01 = 1\n    AND nf.DATA_EMISSAO >= DATEADD(DAY, -7, CAST(GETDATE() AS DATE))\n    AND nf.DATA_EMISSAO < DATEADD(DAY, 1, CAST(GETDATE() AS DATE));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        17904,
+        14224
+      ],
+      "id": "79e7fb89-3b70-414c-8537-a618f6c302b2",
+      "name": "ERP - Buscar f_faturamento_hist7",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-atualizado-em-faturamento-hist7",
+              "name": "atualizado_em",
+              "value": "={{ $now.toUTC().toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        18096,
+        14224
+      ],
+      "id": "8f5b830c-51b6-4267-8cc5-28df33dcfca2",
+      "name": "Padronizar atualizado_em f_faturamento_hist7"
+    },
+    {
+      "parameters": {
+        "jsCode": "function esc(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const clean = String(v)\n    .replace(/\\u0000/g, '')\n    .replace(/[\\u0001-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, '')\n    .replace(/'/g, \"''\");\n  return `'${clean}'`;\n}\nfunction escNum(v) {\n  if (v === null || v === undefined || v === '') return 'NULL';\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 'NULL';\n}\n\n// Dedup: o ERP pode trazer mais de uma linha pra mesma chave\n// (filial+serie+nota_fiscal+entrada_saida+item) -- mantem so a ultima\n// encontrada, pra nao duplicar a chave dentro do mesmo INSERT (Postgres\n// nao deixa o ON CONFLICT DO UPDATE afetar a mesma linha 2x).\nconst porChave = new Map();\nfor (const it of items) {\n  const j = it.json;\n  const chave = `${j.id_filial}|${j.serie_nf}|${j.id_nota_fiscal}|${j.fl_entrada_saida}|${j.id_item}`;\n  porChave.set(chave, it);\n}\nconst itemsDedup = Array.from(porChave.values());\n\nconst CHUNK_SIZE = 300;\nconst out = [];\n\nfor (let i = 0; i < itemsDedup.length; i += CHUNK_SIZE) {\n  const chunk = itemsDedup.slice(i, i + CHUNK_SIZE);\n  const rows = chunk.map(item => {\n    const j = item.json;\n    return `(${esc(j.id_filial)}, ${esc(j.serie_nf)}, ${esc(j.id_nota_fiscal)}, ${esc(j.dt_nf_emissao)}, ${escNum(j.id_cfop)}, ${esc(j.natureza_operacao)}, ${esc(j.fl_entrada_saida)}, ${esc(j.fl_cancelado)}, ${esc(j.tipo_movimentacao)}, ${esc(j.status_pedido)}, ${escNum(j.peso)}, ${esc(j.id_pedido)}, ${esc(j.dt_pedido_emissao)}, ${esc(j.departamento_vendedor)}, ${esc(j.id_vendedor)}, ${escNum(j.id_tipo_comissao)}, ${esc(j.id_cliente)}, ${esc(j.id_item)}, ${esc(j.item_descricao)}, ${esc(j.item_referencia)}, ${escNum(j.qtd_item)}, ${escNum(j.valor_unitario)}, ${escNum(j.valor_total)}, ${escNum(j.valor_total_nf)}, ${esc(j.atualizado_em)})`;\n  }).join(',\\n');\n\n  const sql = `INSERT INTO f_faturamento_hist7 (\n  id_filial, serie_nf, id_nota_fiscal, dt_nf_emissao, id_cfop, natureza_operacao,\n  fl_entrada_saida, fl_cancelado, tipo_movimentacao, status_pedido, peso, id_pedido,\n  dt_pedido_emissao, departamento_vendedor, id_vendedor, id_tipo_comissao, id_cliente,\n  id_item, item_descricao, item_referencia, qtd_item, valor_unitario, valor_total, valor_total_nf, atualizado_em\n) VALUES\n${rows}\nON CONFLICT (id_filial, serie_nf, id_nota_fiscal, fl_entrada_saida, id_item) DO UPDATE SET\n  dt_nf_emissao = EXCLUDED.dt_nf_emissao,\n  id_cfop = EXCLUDED.id_cfop,\n  natureza_operacao = EXCLUDED.natureza_operacao,\n  fl_cancelado = EXCLUDED.fl_cancelado,\n  tipo_movimentacao = EXCLUDED.tipo_movimentacao,\n  status_pedido = EXCLUDED.status_pedido,\n  peso = EXCLUDED.peso,\n  id_pedido = EXCLUDED.id_pedido,\n  dt_pedido_emissao = EXCLUDED.dt_pedido_emissao,\n  departamento_vendedor = EXCLUDED.departamento_vendedor,\n  id_vendedor = EXCLUDED.id_vendedor,\n  id_tipo_comissao = EXCLUDED.id_tipo_comissao,\n  id_cliente = EXCLUDED.id_cliente,\n  item_descricao = EXCLUDED.item_descricao,\n  item_referencia = EXCLUDED.item_referencia,\n  qtd_item = EXCLUDED.qtd_item,\n  valor_unitario = EXCLUDED.valor_unitario,\n  valor_total = EXCLUDED.valor_total,\n  valor_total_nf = EXCLUDED.valor_total_nf,\n  atualizado_em = EXCLUDED.atualizado_em;`;\n\n  out.push({ json: { sql, batch: (i / CHUNK_SIZE) + 1, rows: chunk.length } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        18272,
+        14224
+      ],
+      "id": "ac74b373-b9c1-4707-a32d-effeca3c3f17",
+      "name": "Montar SQL f_faturamento_hist7"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18512,
+        14224
+      ],
+      "id": "a89e1f00-0232-492b-affb-ab97b82ec881",
+      "name": "Supabase - Upsert f_faturamento_hist7",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.f_faturamento_hist7\nWHERE atualizado_em < NOW() - INTERVAL '15 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        18768,
+        14224
+      ],
+      "id": "eba5cf21-2b74-4813-8d59-35a87c2bd522",
+      "name": "Supabase - Limpar obsoletos f_faturamento_hist7",
+      "credentials": {
+        "postgres": {
+          "id": "lD3wOdKHdicrOXLv",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ERP - Buscar pd_ultimo_estagio": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em pd_ultimo_estagio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em pd_ultimo_estagio": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL pd_ultimo_estagio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL pd_ultimo_estagio": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert pd_ultimo_estagio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert pd_ultimo_estagio": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos pd_ultimo_estagio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar mo_3104": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em mo_3104",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em mo_3104": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert mo_3104",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert mo_3104": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos mo_3104",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar pd_sem_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em pd_sem_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em pd_sem_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL pd_sem_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL pd_sem_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert pd_sem_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert pd_sem_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos pd_sem_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar pd_criado_despachado_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em pd_criado_despachado_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em pd_criado_despachado_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL pd_criado_despachado_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL pd_criado_despachado_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert pd_criado_despachado_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert pd_criado_despachado_intelipost": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos pd_criado_despachado_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar pd_item_estagio1": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em pd_item_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em pd_item_estagio1": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL pd_item_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL pd_item_estagio1": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert pd_item_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert pd_item_estagio1": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos pd_item_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar historico_pedidos": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em historico_pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em historico_pedidos": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL historico_pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL historico_pedidos": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert historico_pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert historico_pedidos": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos historico_pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar f_pedido": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em f_pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em f_pedido": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert f_pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert f_pedido": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos f_pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar f_faturamento_hist7": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em f_faturamento_hist7": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL f_faturamento_hist7": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Upsert f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert f_faturamento_hist7": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Limpar obsoletos f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendado a cada 20 minutos": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_ultimo_estagio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos pd_ultimo_estagio": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar mo_3104",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos mo_3104": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_sem_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos pd_sem_intelipost": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_criado_despachado_intelipost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos pd_criado_despachado_intelipost": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_item_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos pd_item_estagio1": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar historico_pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos historico_pedidos": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar f_pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos f_pedido": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "bbc52532-ab5c-437b-a306-d5258e1fec01",
+  "meta": {
+    "instanceId": "2330bfb2fda0d68d13a663836a18fa13d4100266dac35f5377e80b4c2f083789"
+  },
+  "nodeGroups": [],
+  "id": "h1hWmSK7E4Rum2pq",
+  "tags": []
+}

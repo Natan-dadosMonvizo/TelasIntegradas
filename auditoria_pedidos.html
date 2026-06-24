@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoria - Pedidos Faturados/Separados no Dia</title>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:#f4f6f9;color:#23272b;margin:0;padding:24px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{color:#6b7684;font-size:13px;margin-bottom:20px;}
+  .status{font-size:13px;color:#6b7684;margin-bottom:20px;}
+  .status.error{color:#dc2626;font-weight:700;}
+  .block{background:#fff;border:1px solid #e6e9ee;border-radius:10px;padding:16px 18px;margin-bottom:24px;}
+  .block-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .block-title{font-size:15px;font-weight:800;}
+  .block-counts{font-size:13px;color:#6b7684;}
+  .block-counts b{color:#23272b;font-size:15px;}
+  button{background:#333;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+  button:hover{background:#111;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
+  th{text-align:left;font-size:10.5px;color:#6b7684;text-transform:uppercase;letter-spacing:.02em;padding:6px 8px;border-bottom:2px solid #e6e9ee;position:sticky;top:0;background:#fff;}
+  th.num,td.num{text-align:right;}
+  td{padding:5px 8px;border-bottom:1px solid #f0f2f5;}
+  tr.dup td{background:#fff7e6;}
+  .tag-dup{display:inline-block;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;margin-left:6px;}
+  .tag-miss-nf{display:inline-block;background:#fecaca;color:#991b1b;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;}
+  .tag-miss-status{display:inline-block;background:#bfdbfe;color:#1e3a8a;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;}
+  .tag-fat-hoje{display:inline-block;background:#bbf7d0;color:#166534;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;}
+  .tag-fat-outro{display:inline-block;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;}
+  .scroll{max-height:520px;overflow:auto;border:1px solid #e6e9ee;border-radius:8px;}
+  .note{font-size:11.5px;color:#6b7684;margin-top:10px;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<h1>Auditoria — Pedidos Faturados / Separados no dia</h1>
+<div class="sub">Lista pedido a pedido que compõe os cards "Notas fiscais faturadas no dia" e "Pedidos separados no dia" do painel, e cruza pedido x nota fiscal faturada hoje pra achar divergências (pedido sem NF, ou NF sem status de faturado no histórico). Abra este arquivo direto no navegador (precisa de internet) — ele consulta o mesmo Supabase do painel, em tempo real.</div>
+<div class="status" id="status">carregando dados do Supabase...</div>
+
+<div class="block">
+  <div class="block-header">
+    <div class="block-title">Faturados no dia (status = PEDIDO FATURADO, evento hoje, 1 valor por pedido)</div>
+    <div class="block-counts">eventos PEDIDO FATURADO hoje: <b id="cntFaturadoLinhas">0</b> &nbsp;|&nbsp; pedidos distintos: <b id="cntFaturadoDistintos">0</b></div>
+    <button onclick="exportCsv('faturado')">Exportar CSV</button>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>pedido</th><th>filial</th><th>data_hora_inclusao</th><th>dias atrás (calc)</th><th>sequencia</th><th>cliente</th><th>vendedor</th><th class="num">valor</th></tr></thead>
+      <tbody id="tableFaturado"></tbody>
+    </table>
+  </div>
+  <div class="note">A lista já está deduplicada por pedido: quando um pedido tem mais de um evento com status bruto "PEDIDO FATURADO" hoje, só aparece 1 linha (a mais recente), pra não contar o valor 2x. Linhas marcadas <span class="tag-dup">2x+</span> são pedidos que tinham mais de um evento assim hoje antes da deduplicação.</div>
+</div>
+
+<div class="block">
+  <div class="block-header">
+    <div class="block-title">Notas fiscais faturadas no dia (f_faturamento_hist7) — mesma fonte do card "Notas fiscais faturadas no dia" do painel</div>
+    <div class="block-counts">linhas de item hoje: <b id="cntNfLinhas">0</b> &nbsp;|&nbsp; NFs distintas: <b id="cntNfDistintas">0</b> &nbsp;|&nbsp; pedidos vinculados: <b id="cntNfPedidos">0</b></div>
+    <button onclick="exportCsv('notafiscal')">Exportar CSV</button>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>pedido</th><th>filial</th><th>série</th><th>nota fiscal</th><th>emissão</th><th>cliente</th><th>vendedor</th><th class="num">valor da NF</th></tr></thead>
+      <tbody id="tableNotaFiscal"></tbody>
+    </table>
+  </div>
+  <div class="note">1 linha por NOTA FISCAL distinta (dedupe por id_filial+serie_nf+id_nota_fiscal+fl_entrada_saida), só notas de saída (tipo_movimentacao = 'Saida') não canceladas (fl_cancelado != 'S') emitidas hoje. Valor é o valor_total_nf (cabeçalho da NF). Cliente/vendedor vêm de f_pedido pelo id_pedido da nota.</div>
+</div>
+
+<div class="block">
+  <div class="block-header">
+    <div class="block-title">Divergências: pedido faturado (histórico) x nota fiscal emitida (hoje)</div>
+    <div class="block-counts">faturado no histórico sem NF hoje: <b id="cntDivergSemNf">0</b> &nbsp;|&nbsp; NF hoje sem evento de faturado no histórico: <b id="cntDivergSemStatus">0</b></div>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>pedido</th><th>situação</th><th>filial</th><th>cliente</th><th>vendedor</th><th class="num">valor</th></tr></thead>
+      <tbody id="tableDivergencia"></tbody>
+    </table>
+  </div>
+  <div class="note">
+    <span class="tag-miss-nf">sem NF</span> = pedido teve evento "PEDIDO FATURADO" hoje no histórico, mas não tem nenhuma NF de venda emitida hoje em f_faturamento_hist7 — sinal de que o status pode estar errado/atrasado, ou a NF caiu em outro dia/ainda não foi emitida.<br>
+    <span class="tag-miss-status">sem status</span> = existe NF de venda emitida hoje pra esse pedido, mas não houve evento "PEDIDO FATURADO" hoje no histórico — sinal de que o histórico não está acompanhando o faturamento real (o problema relatado pelo usuário: "o banco não está atualizando esse status").<br>
+    Pedido vazio aqui (em ambos os blocos acima) é o resultado ideal: status e nota fiscal bateram no mesmo dia.
+  </div>
+</div>
+
+<div class="block">
+  <div class="block-header">
+    <div class="block-title">Separados no dia (status_resumo = EM SEPARAÇÃO, evento hoje)</div>
+    <div class="block-counts">linhas em historico_pedidos hoje: <b id="cntSeparadoLinhas">0</b> &nbsp;|&nbsp; pedidos distintos: <b id="cntSeparadoDistintos">0</b></div>
+    <button onclick="exportCsv('separado')">Exportar CSV</button>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>pedido</th><th>filial</th><th>data_hora_inclusao</th><th>dias atrás (calc)</th><th>sequencia</th><th>cliente</th><th>vendedor</th><th>faturado</th><th class="num">valor</th></tr></thead>
+      <tbody id="tableSeparado"></tbody>
+    </table>
+  </div>
+  <div class="note">Linhas marcadas <span class="tag-dup">2x+</span> são pedidos com mais de um evento EM SEPARAÇÃO hoje em historico_pedidos. A coluna <b>faturado</b> mostra se o pedido tem NF de venda (f_faturamento_hist7) emitida <span class="tag-fat-hoje">hoje</span>, <span class="tag-fat-outro">em outro dia</span> (mostra a data mais recente), ou <span class="tag-miss-nf">sem NF</span> encontrada — pedido separado hoje não precisa ter sido faturado hoje, então não é esperado que esses números batam com "Notas fiscais faturadas no dia".</div>
+</div>
+
+<div class="note">
+  "hoje" é calculado comparando só a data (sem hora) de data_hora_inclusao/dt_nf_emissao com a data local do navegador que abrir este arquivo — exatamente a mesma regra usada pelo painel (função diasDesdeData). Cliente/vendedor vêm de f_pedido; quando o pedido ainda não está em f_pedido, cai no fallback de pd_ultimo_estagio (cliente) ou fica "—" (vendedor). Valor dos blocos de histórico segue a mesma cadeia de fallback do painel: f_pedido.valor_total_pedido → valor_pedido nativo do evento → vw_pedido_status_estagio (filial+pedido) → vw_pedido_status_estagio (só pedido). Valor do bloco de notas fiscais e divergências usa valor_total_nf de f_faturamento_hist7 (valor de cabeçalho da NF).
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const CONFIG = {
+  SUPABASE_URL: 'https://inzazrynxbdookntzxfi.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_DMld6-S8WRXSBx5eaNlExQ_ZhzrELkJ',
+  REFRESH_INTERVAL_MS: 4 * 60 * 1000   // recarrega os dados automaticamente, mesmo intervalo do painel principal
+};
+const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function intNum(v){ const n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtCurrency(v){
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function diasDesdeData(dataStr){
+  const d = new Date(dataStr);
+  if(isNaN(d.getTime())) return null;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const dia = new Date(d); dia.setHours(0, 0, 0, 0);
+  return Math.floor((hoje - dia) / 86400000);
+}
+function statusBruto(h){
+  return String(h && h.status || '').trim();
+}
+// Mesma lógica do painel: agrupa por pedido e mantém só o evento mais
+// recente (maior data_hora_inclusao, depois maior sequencia) — evita
+// contar o mesmo pedido (e seu valor) mais de uma vez quando ele tem
+// vários eventos com o mesmo status bruto no mesmo dia.
+function dedupPorPedidoStatusBrutoEDia(rows, statusBrutoAlvo, diasAtras){
+  const porPedido = new Map();
+  rows.forEach(h => {
+    if(statusBruto(h) !== statusBrutoAlvo) return;
+    if(diasDesdeData(h.data_hora_inclusao) !== diasAtras) return;
+    const atual = porPedido.get(h.pedido);
+    if(!atual){ porPedido.set(h.pedido, h); return; }
+    const dAtual = new Date(atual.data_hora_inclusao).getTime();
+    const dNovo = new Date(h.data_hora_inclusao).getTime();
+    if(dNovo > dAtual || (dNovo === dAtual && intNum(h.sequencia) > intNum(atual.sequencia))){
+      porPedido.set(h.pedido, h);
+    }
+  });
+  return Array.from(porPedido.values());
+}
+
+// Mesma lógica do painel (ver itensNotasFaturadasNoDia/notasFiscaisDistintas
+// em index.html): f_faturamento_hist7 tem 1 linha por ITEM de NF, então pra
+// listar NOTAS (não itens) precisamos deduplicar por id_filial+serie_nf+
+// id_nota_fiscal+fl_entrada_saida e usar valor_total_nf (valor de cabeçalho
+// da nota, repetido em toda linha de item) em vez de somar valor_total.
+function notaCancelada(it){
+  return String(it && it.fl_cancelado || '').trim().toUpperCase() === 'S';
+}
+function itensNotasFaturadasNoDia(rows, diasAtras){
+  return rows.filter(it =>
+    it.tipo_movimentacao === 'Saida' &&
+    !notaCancelada(it) &&
+    diasDesdeData(it.dt_nf_emissao) === diasAtras
+  );
+}
+function notasFiscaisDedupRows(itens){
+  const porNota = new Map();
+  itens.forEach(it => {
+    const chave = `${it.id_filial}|${it.serie_nf}|${it.id_nota_fiscal}|${it.fl_entrada_saida}`;
+    if(!porNota.has(chave)) porNota.set(chave, it);
+  });
+  return Array.from(porNota.values());
+}
+
+// Pra cada pedido (em TODO o histórico de 7 dias de f_faturamento_hist7,
+// não só hoje), descobre se ele tem NF de venda válida (Saida, não
+// cancelada) emitida hoje, em outro dia (e quando), ou nenhuma NF
+// encontrada — usado na coluna "faturado" do bloco "Separados no dia",
+// pra responder "esse pedido separado hoje foi faturado hoje ou em
+// outro dia?" sem depender do campo status (que pode estar atrasado).
+function statusFaturamentoPorPedido(faturamentoHist7){
+  const notasPorPedido = new Map(); // pedido (string) -> Map(chave NF -> dt_nf_emissao)
+  (faturamentoHist7 || []).forEach(it => {
+    if(it.tipo_movimentacao !== 'Saida' || notaCancelada(it)) return;
+    if(it.id_pedido == null || it.id_pedido === '') return;
+    const pedido = String(it.id_pedido);
+    if(!notasPorPedido.has(pedido)) notasPorPedido.set(pedido, new Map());
+    const chave = `${it.id_filial}|${it.serie_nf}|${it.id_nota_fiscal}|${it.fl_entrada_saida}`;
+    if(!notasPorPedido.get(pedido).has(chave)) notasPorPedido.get(pedido).set(chave, it.dt_nf_emissao);
+  });
+  const resultado = new Map(); // pedido (string) -> { temHoje, dataMaisRecente }
+  notasPorPedido.forEach((notas, pedido) => {
+    let temHoje = false;
+    let maisRecente = null;
+    notas.forEach(data => {
+      if(diasDesdeData(data) === 0) temHoje = true;
+      if(maisRecente === null || new Date(data) > new Date(maisRecente)) maisRecente = data;
+    });
+    resultado.set(pedido, { temHoje, dataMaisRecente: maisRecente });
+  });
+  return resultado;
+}
+function fmtDataCurta(dataStr){
+  const d = new Date(dataStr);
+  return isNaN(d.getTime()) ? escapeHtml(dataStr) : d.toLocaleDateString('pt-BR');
+}
+function tagFaturado(pedido, statusFaturamentoMap){
+  const info = statusFaturamentoMap.get(String(pedido));
+  if(!info) return '<span class="tag-miss-nf">sem NF</span>';
+  if(info.temHoje) return '<span class="tag-fat-hoje">hoje</span>';
+  return `<span class="tag-fat-outro">outro dia (${fmtDataCurta(info.dataMaisRecente)})</span>`;
+}
+
+async function fetchTodasLinhas(tabela){
+  const PAGE = 1000;
+  let from = 0;
+  let linhas = [];
+  while(true){
+    const { data, error } = await sb.from(tabela).select('*').range(from, from + PAGE - 1);
+    if(error) throw error;
+    linhas = linhas.concat(data || []);
+    if(!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return linhas;
+}
+
+function renderTabela(tbodyId, rows, fPedidoMap, pedidosMap, valorPorPedido, valorPorPedidoSimples, contagemRows, statusFaturamentoMap){
+  const contagemPorPedido = {};
+  (contagemRows || rows).forEach(h => { contagemPorPedido[h.pedido] = (contagemPorPedido[h.pedido] || 0) + 1; });
+
+  function valorPorFPedido(idPedido){
+    const f = fPedidoMap.get(String(idPedido));
+    return (f && f.valor_total_pedido != null && f.valor_total_pedido !== '') ? num(f.valor_total_pedido) : null;
+  }
+  function valorPorNumeroPedido(idPedido){
+    return num(valorPorPedidoSimples.get(String(idPedido)));
+  }
+  function valorDoPedido(p){
+    const idPedido = p ? p.pedido : null;
+    const viaFPedido = valorPorFPedido(idPedido);
+    if(viaFPedido != null) return viaFPedido;
+    if(p && p.valor_pedido != null && p.valor_pedido !== '') return num(p.valor_pedido);
+    if(p && p.filial != null){
+      const viaFilialPedido = valorPorPedido.get(`${p.filial}|${p.pedido}`);
+      if(viaFilialPedido != null) return num(viaFilialPedido);
+    }
+    return valorPorNumeroPedido(idPedido);
+  }
+  function lookupCliente(idPedido){
+    const f = fPedidoMap.get(String(idPedido));
+    if(f && f.nome_cliente) return f.nome_cliente;
+    const p = pedidosMap.get(String(idPedido));
+    return (p && p.nome_cliente) ? p.nome_cliente : '—';
+  }
+  function lookupVendedor(idPedido){
+    const f = fPedidoMap.get(String(idPedido));
+    return (f && f.nome_vendedor) ? f.nome_vendedor : '—';
+  }
+
+  const ordenadas = rows.slice().sort((a,b) => new Date(b.data_hora_inclusao) - new Date(a.data_hora_inclusao));
+
+  document.getElementById(tbodyId).innerHTML = ordenadas.map(h => {
+    const dup = contagemPorPedido[h.pedido] > 1;
+    return `<tr class="${dup ? 'dup' : ''}">
+      <td>${escapeHtml(h.pedido)}${dup ? `<span class="tag-dup">${contagemPorPedido[h.pedido]}x</span>` : ''}</td>
+      <td>${escapeHtml(h.filial)}</td>
+      <td>${escapeHtml(h.data_hora_inclusao)}</td>
+      <td>${diasDesdeData(h.data_hora_inclusao)}</td>
+      <td>${escapeHtml(h.sequencia)}</td>
+      <td>${escapeHtml(lookupCliente(h.pedido))}</td>
+      <td>${escapeHtml(lookupVendedor(h.pedido))}</td>
+      ${statusFaturamentoMap ? `<td>${tagFaturado(h.pedido, statusFaturamentoMap)}</td>` : ''}
+      <td class="num">${fmtCurrency(valorDoPedido(h))}</td>
+    </tr>`;
+  }).join('');
+
+  return { linhas: rows.length, distintos: new Set(rows.map(r => r.pedido)).size };
+}
+
+window.lastData = {};
+
+function exportCsv(tipo){
+  const rows = window.lastData[tipo];
+  if(!rows || !rows.length) return;
+  const temFaturado = rows[0].faturado !== undefined;
+  const header = ['pedido','filial','data_hora_inclusao','dias_atras','sequencia','cliente','vendedor'];
+  if(temFaturado) header.push('faturado');
+  header.push('valor');
+  const linhas = [header.join(';')];
+  rows.forEach(r => {
+    const campos = [r.pedido, r.filial, r.data_hora_inclusao, r.dias, r.sequencia, r.cliente, r.vendedor];
+    if(temFaturado) campos.push(r.faturado);
+    campos.push(r.valor);
+    linhas.push(campos.map(v => String(v ?? '').replace(/;/g, ',')).join(';'));
+  });
+  const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pedidos_${tipo}_no_dia.csv`;
+  a.click();
+}
+
+async function run(){
+  const statusEl = document.getElementById('status');
+  try{
+    const [historicoPedidos, fPedido, pedidos, statusEstagio, faturamentoHist7] = await Promise.all([
+      fetchTodasLinhas('historico_pedidos'),
+      fetchTodasLinhas('f_pedido'),
+      fetchTodasLinhas('pd_ultimo_estagio'),
+      fetchTodasLinhas('vw_pedido_status_estagio'),
+      fetchTodasLinhas('f_faturamento_hist7')
+    ]);
+
+    const fPedidoMap = new Map(fPedido.filter(f => f.id_pedido != null).map(f => [String(f.id_pedido), f]));
+    const pedidosMap = new Map(pedidos.filter(p => p.pedido != null).map(p => [String(p.pedido), p]));
+    const valorPorPedido = new Map(statusEstagio.map(r => [`${r.filial}|${r.pedido}`, r.valor_pedido]));
+    const valorPorPedidoSimples = new Map(statusEstagio.filter(r => r.pedido != null).map(r => [String(r.pedido), r.valor_pedido]));
+
+    const faturadoHojeRaw = historicoPedidos.filter(h => statusBruto(h) === 'PEDIDO FATURADO' && diasDesdeData(h.data_hora_inclusao) === 0);
+    const faturadoHoje = dedupPorPedidoStatusBrutoEDia(historicoPedidos, 'PEDIDO FATURADO', 0);
+    const separadoHoje = historicoPedidos.filter(h => h.status_resumo === 'EM SEPARAÇÃO' && diasDesdeData(h.data_hora_inclusao) === 0);
+
+    const itensNfHoje = itensNotasFaturadasNoDia(faturamentoHist7 || [], 0);
+    const nfHoje = notasFiscaisDedupRows(itensNfHoje);
+    const statusFaturamentoMap = statusFaturamentoPorPedido(faturamentoHist7);
+
+    const resFaturado = renderTabela('tableFaturado', faturadoHoje, fPedidoMap, pedidosMap, valorPorPedido, valorPorPedidoSimples, faturadoHojeRaw);
+    const resSeparado = renderTabela('tableSeparado', separadoHoje, fPedidoMap, pedidosMap, valorPorPedido, valorPorPedidoSimples, null, statusFaturamentoMap);
+
+    document.getElementById('cntFaturadoLinhas').textContent = resFaturado.linhas;
+    document.getElementById('cntFaturadoDistintos').textContent = resFaturado.distintos;
+    document.getElementById('cntSeparadoLinhas').textContent = resSeparado.linhas;
+    document.getElementById('cntSeparadoDistintos').textContent = resSeparado.distintos;
+
+    function valorPorFPedido2(idPedido){
+      const f = fPedidoMap.get(String(idPedido));
+      return (f && f.valor_total_pedido != null && f.valor_total_pedido !== '') ? num(f.valor_total_pedido) : null;
+    }
+    function valorPorNumeroPedido2(idPedido){ return num(valorPorPedidoSimples.get(String(idPedido))); }
+    function valorDoPedido2(p){
+      const viaFPedido = valorPorFPedido2(p.pedido);
+      if(viaFPedido != null) return viaFPedido;
+      if(p.valor_pedido != null && p.valor_pedido !== '') return num(p.valor_pedido);
+      if(p.filial != null){
+        const viaFilialPedido = valorPorPedido.get(`${p.filial}|${p.pedido}`);
+        if(viaFilialPedido != null) return num(viaFilialPedido);
+      }
+      return valorPorNumeroPedido2(p.pedido);
+    }
+    function lookupCliente2(idPedido){
+      const f = fPedidoMap.get(String(idPedido));
+      if(f && f.nome_cliente) return f.nome_cliente;
+      const p = pedidosMap.get(String(idPedido));
+      return (p && p.nome_cliente) ? p.nome_cliente : '—';
+    }
+    function lookupVendedor2(idPedido){
+      const f = fPedidoMap.get(String(idPedido));
+      return (f && f.nome_vendedor) ? f.nome_vendedor : '—';
+    }
+
+    window.lastData.faturado = faturadoHoje.map(h => ({
+      pedido: h.pedido, filial: h.filial, data_hora_inclusao: h.data_hora_inclusao,
+      dias: diasDesdeData(h.data_hora_inclusao), sequencia: h.sequencia,
+      cliente: lookupCliente2(h.pedido), vendedor: lookupVendedor2(h.pedido), valor: valorDoPedido2(h)
+    }));
+    window.lastData.separado = separadoHoje.map(h => {
+      const info = statusFaturamentoMap.get(String(h.pedido));
+      const faturado = !info ? 'sem NF' : (info.temHoje ? 'hoje' : `outro dia (${fmtDataCurta(info.dataMaisRecente)})`);
+      return {
+        pedido: h.pedido, filial: h.filial, data_hora_inclusao: h.data_hora_inclusao,
+        dias: diasDesdeData(h.data_hora_inclusao), sequencia: h.sequencia,
+        cliente: lookupCliente2(h.pedido), vendedor: lookupVendedor2(h.pedido), faturado, valor: valorDoPedido2(h)
+      };
+    });
+
+    // --- Notas fiscais faturadas no dia (f_faturamento_hist7) ---
+    const nfOrdenadas = nfHoje.slice().sort((a, b) => new Date(b.dt_nf_emissao) - new Date(a.dt_nf_emissao));
+    document.getElementById('tableNotaFiscal').innerHTML = nfOrdenadas.map(it => {
+      const valor = (it.valor_total_nf !== null && it.valor_total_nf !== undefined) ? num(it.valor_total_nf) : num(it.valor_total);
+      return `<tr>
+        <td>${escapeHtml(it.id_pedido)}</td>
+        <td>${escapeHtml(it.id_filial)}</td>
+        <td>${escapeHtml(it.serie_nf)}</td>
+        <td>${escapeHtml(it.id_nota_fiscal)}</td>
+        <td>${escapeHtml(it.dt_nf_emissao)}</td>
+        <td>${escapeHtml(lookupCliente2(it.id_pedido))}</td>
+        <td>${escapeHtml(lookupVendedor2(it.id_pedido))}</td>
+        <td class="num">${fmtCurrency(valor)}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('cntNfLinhas').textContent = itensNfHoje.length;
+    document.getElementById('cntNfDistintas').textContent = nfHoje.length;
+    const pedidosComNfHojeSet = new Set(nfHoje.filter(it => it.id_pedido != null).map(it => String(it.id_pedido)));
+    document.getElementById('cntNfPedidos').textContent = pedidosComNfHojeSet.size;
+
+    window.lastData.notafiscal = nfOrdenadas.map(it => ({
+      pedido: it.id_pedido, filial: it.id_filial, data_hora_inclusao: it.dt_nf_emissao,
+      dias: diasDesdeData(it.dt_nf_emissao), sequencia: `${it.serie_nf}/${it.id_nota_fiscal}`,
+      cliente: lookupCliente2(it.id_pedido), vendedor: lookupVendedor2(it.id_pedido),
+      valor: (it.valor_total_nf !== null && it.valor_total_nf !== undefined) ? num(it.valor_total_nf) : num(it.valor_total)
+    }));
+
+    // --- Divergências: pedido faturado (histórico) x NF emitida (hoje) ---
+    const pedidosFaturadoHistoricoHojeSet = new Set(faturadoHoje.map(h => String(h.pedido)));
+    const valorPorPedidoNf = new Map();
+    nfHoje.forEach(it => {
+      if(it.id_pedido == null) return;
+      const chave = String(it.id_pedido);
+      const valor = (it.valor_total_nf !== null && it.valor_total_nf !== undefined) ? num(it.valor_total_nf) : num(it.valor_total);
+      valorPorPedidoNf.set(chave, (valorPorPedidoNf.get(chave) || 0) + valor);
+    });
+
+    const semNf = faturadoHoje.filter(h => !pedidosComNfHojeSet.has(String(h.pedido)));
+    const semStatus = Array.from(pedidosComNfHojeSet).filter(p => !pedidosFaturadoHistoricoHojeSet.has(p));
+
+    const divergRows = [];
+    semNf.forEach(h => {
+      divergRows.push({
+        pedido: h.pedido, situacao: 'sem-nf', filial: h.filial,
+        cliente: lookupCliente2(h.pedido), vendedor: lookupVendedor2(h.pedido), valor: valorDoPedido2(h)
+      });
+    });
+    semStatus.forEach(p => {
+      const algumItem = nfHoje.find(it => String(it.id_pedido) === p);
+      divergRows.push({
+        pedido: p, situacao: 'sem-status', filial: algumItem ? algumItem.id_filial : '—',
+        cliente: lookupCliente2(p), vendedor: lookupVendedor2(p), valor: valorPorPedidoNf.get(p) || 0
+      });
+    });
+
+    document.getElementById('tableDivergencia').innerHTML = divergRows.map(r => `<tr>
+        <td>${escapeHtml(r.pedido)}</td>
+        <td>${r.situacao === 'sem-nf' ? '<span class="tag-miss-nf">sem NF</span>' : '<span class="tag-miss-status">sem status</span>'}</td>
+        <td>${escapeHtml(r.filial)}</td>
+        <td>${escapeHtml(r.cliente)}</td>
+        <td>${escapeHtml(r.vendedor)}</td>
+        <td class="num">${fmtCurrency(r.valor)}</td>
+      </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#6b7684;padding:14px;">nenhuma divergência hoje — status e NF batem 100%</td></tr>`;
+    document.getElementById('cntDivergSemNf').textContent = semNf.length;
+    document.getElementById('cntDivergSemStatus').textContent = semStatus.length;
+
+    statusEl.className = 'status';
+    statusEl.textContent = `dados carregados às ${new Date().toLocaleString('pt-BR')} — historico_pedidos: ${historicoPedidos.length} linhas no total (todos os status/dias) | f_faturamento_hist7: ${(faturamentoHist7 || []).length} linhas no total — atualiza automaticamente a cada ${CONFIG.REFRESH_INTERVAL_MS / 60000} min`;
+  }catch(err){
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Erro ao carregar do Supabase: ' + (err && err.message ? err.message : String(err));
+    console.error(err);
+  }
+}
+run();
+setInterval(run, CONFIG.REFRESH_INTERVAL_MS);
+</script>
+</body>
+</html>

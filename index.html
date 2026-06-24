@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Operacional - TV</title>
+<style>
+  :root{
+    /* Paleta de cores definida pelo usuário (Chumbo / Azul Claro / Roxo / Amarelo) */
+    --chumbo:#333333;
+    --azul-claro:#80C0FF;
+    --roxo:#7D7DB2;
+    --amarelo:#FFE780;
+    --laranja:#F0923B;
+    --verde:#3FAE82;
+
+    --bg:#f4f6f9;
+    --panel-bg:#ffffff;
+    --text-primary:#23272b;
+    --text-secondary:#6b7684;
+    --accent-success:#16a34a;
+    --accent-warning:#d97706;
+    --accent-danger:#dc2626;
+    --border:#e6e9ee;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;width:100%;height:100%;
+    background:var(--bg);color:var(--text-primary);
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    overflow:hidden;
+  }
+  #app{
+    width:100vw;height:100vh;
+    padding:1.6vh 2.2vw;
+    display:flex;flex-direction:column;
+    gap:1.1vh;
+  }
+  /* ---------- header ---------- */
+  header{
+    display:flex;justify-content:space-between;align-items:center;flex-shrink:0;
+  }
+  .header-left{display:flex;align-items:center;gap:.7vw;}
+  .header-right-top{display:flex;align-items:center;justify-content:flex-end;gap:.6vw;}
+  .header-logo-corner{
+    height:clamp(26px,3.6vh,42px);width:auto;border-radius:5px;flex-shrink:0;
+  }
+  .header-center{flex:1;text-align:center;}
+  .header-title-big{
+    font-size:clamp(18px,2vw,30px);font-weight:800;letter-spacing:.01em;
+  }
+  .header-subtitle{
+    font-size:clamp(11px,0.9vw,15px);color:var(--text-secondary);margin-left:.6em;font-weight:500;
+  }
+  .header-right{text-align:right;}
+  .date-pill{display:none;}
+  #healthLine{
+    font-size:clamp(10px,0.85vw,14px);color:var(--text-secondary);font-weight:600;
+    text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:6px;
+  }
+  .dot-status{display:none;}
+  #errorBanner{
+    display:none;color:var(--accent-danger);font-size:clamp(10px,0.78vw,13px);
+    text-align:right;margin-top:.3vh;max-width:32vw;
+  }
+  /* ---------- cards de resumo ---------- */
+  #statusCards{
+    display:flex;gap:.9vw;flex-shrink:0;flex-wrap:wrap;
+  }
+  .status-card{
+    flex:1 1 14vw;min-width:190px;border-radius:14px;
+    padding:1.2vh 1.2vw;
+  }
+  .status-card.chumbo{background:var(--chumbo);color:#ffffff;}
+  .status-card.azul{background:var(--azul-claro);color:#16324a;}
+  .status-card.roxo{background:var(--roxo);color:#ffffff;}
+  .status-card.amarelo{background:var(--amarelo);color:#3a2f0a;}
+  .status-card-top{display:flex;align-items:center;gap:.6vw;margin-bottom:.7vh;}
+  .status-card-icon{
+    width:2.1vw;height:2.1vw;min-width:26px;min-height:26px;max-width:34px;max-height:34px;
+    border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    background:rgba(255,255,255,.2);
+  }
+  .status-card.azul .status-card-icon,.status-card.amarelo .status-card-icon{background:rgba(0,0,0,.1);}
+  .status-card-icon svg{width:55%;height:55%;}
+  .status-card-label{
+    font-size:clamp(9px,0.7vw,12px);opacity:.9;
+    text-transform:uppercase;letter-spacing:.03em;line-height:1.25;font-weight:600;
+  }
+  .status-card-value{font-size:clamp(22px,2.6vw,40px);font-weight:800;line-height:1;}
+  .status-card-unit{font-size:.4em;font-weight:600;opacity:.8;margin-left:.3em;text-transform:uppercase;}
+  .status-card-valor{font-size:clamp(11px,1vw,16px);font-weight:700;margin-top:.5vh;}
+  .status-card-valor .valor-label{font-size:.62em;font-weight:600;opacity:.85;text-transform:uppercase;margin-left:.4em;}
+  .status-card-split{font-size:clamp(9px,0.78vw,12px);margin-top:.45vh;opacity:.9;display:flex;gap:1em;flex-wrap:wrap;}
+  .status-card-split b{font-weight:800;}
+  .status-card-trend{
+    font-size:clamp(9px,0.68vw,12px);margin-top:.7vh;display:flex;align-items:center;gap:4px;font-weight:700;
+  }
+  .status-card.chumbo .status-card-trend.good,.status-card.roxo .status-card-trend.good{color:#86efac;}
+  .status-card.chumbo .status-card-trend.bad,.status-card.roxo .status-card-trend.bad{color:#fca5a5;}
+  .status-card.azul .status-card-trend.good,.status-card.amarelo .status-card-trend.good{color:#15803d;}
+  .status-card.azul .status-card-trend.bad,.status-card.amarelo .status-card-trend.bad{color:#b91c1c;}
+  .status-card-trend.flat{opacity:.75;}
+  .trend-note{opacity:.8;font-weight:400;}
+  /* ---------- corpo ---------- */
+  .body-grid{flex:1;min-height:0;display:flex;flex-direction:column;gap:1.1vh;position:relative;}
+  .panels-row{flex:1;min-height:0;display:flex;gap:1.2vw;}
+  .panels-row-compare{flex:.85;min-height:0;display:flex;gap:1.2vw;}
+  .bottom-row{flex:1.35;min-height:0;display:flex;gap:1.2vw;}
+  .panels-row-mid{flex:1;min-height:0;display:flex;gap:1.2vw;}
+  .quad-top{flex:1.4;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1.1vh 1.2vw;}
+  .row-tall{flex:2.2;min-height:0;display:flex;gap:1.2vw;}
+  /* grid 3 colunas x 2 linhas: linha 1 = 3 painéis; linha 2 = 2 painéis +
+     1 célula reservada (vazia, sem nenhum elemento) pra tabelas futuras */
+  .dash-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:1.4vh 1.2vw;}
+  .dash-grid .empty-slot{visibility:hidden;}
+  .panel{
+    flex:1;min-width:0;min-height:0;border-radius:14px;background:var(--panel-bg);
+    border:1px solid var(--border);
+    padding:1.2vh 1.1vw;display:flex;flex-direction:column;
+  }
+  .panel-wide{flex:2.6;}
+  .sidebar-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:1.1vh;}
+  .sidebar-col .panel{flex:1;}
+  .panel-header-row{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;margin-bottom:.8vh;gap:.5vw;flex-wrap:wrap;}
+  .section-label{
+    font-size:clamp(9.5px,0.78vw,13px);color:var(--text-secondary);
+    text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  }
+  /* chip colorido do cabeçalho do painel (substitui o .section-label simples) */
+  .panel-chip{
+    display:inline-flex;align-items:center;gap:.4em;border-radius:20px;color:#fff;
+    padding:.55vh 1vw;font-size:clamp(9px,0.74vw,12.5px);font-weight:800;
+    text-transform:uppercase;letter-spacing:.03em;line-height:1.15;
+  }
+  .panel-chip.roxo{background:var(--roxo);}
+  .panel-chip.amarelo{background:var(--amarelo);color:#3a2f0a;}
+  .panel-chip.laranja{background:var(--laranja);}
+  .panel-chip.verde{background:var(--verde);}
+  /* pill numérico (contagem) à direita do chip */
+  .panel-count-pill{
+    display:inline-flex;align-items:center;justify-content:center;min-width:2.1em;
+    border-radius:20px;background:#fff;border:1px solid var(--border);color:var(--text-primary);
+    font-weight:800;font-size:clamp(11px,0.95vw,16px);padding:.3vh .8vw;
+  }
+  .panel-count-pill.hidden-pill{display:none;}
+  /* botão "expandir" = ícone X, sempre no canto superior direito do painel */
+  .btn-close-expand{
+    border:1px solid var(--border);background:#fff;color:var(--text-secondary);
+    border-radius:8px;width:1.9em;height:1.9em;display:inline-flex;align-items:center;justify-content:center;
+    font-size:.8em;font-weight:800;cursor:pointer;flex-shrink:0;line-height:1;
+  }
+  .btn-close-expand:hover{background:rgba(0,0,0,.07);color:var(--text-primary);}
+  .letra-status{font-weight:800;color:var(--text-secondary);margin-left:.35em;font-size:.85em;}
+  .badge-group{display:flex;align-items:center;gap:.5vw;flex-wrap:wrap;}
+  .badge-count{
+    display:inline-flex;align-items:center;gap:.35em;
+    background:rgba(220,38,38,.1);color:var(--accent-danger);border-radius:20px;
+    padding:.2vh .7vw;font-size:clamp(9.5px,0.74vw,12px);font-weight:800;
+  }
+  .badge-count.roxo{background:rgba(125,125,178,.16);color:var(--roxo);}
+  .badge-count.amarelo{background:rgba(217,119,6,.12);color:var(--accent-warning);}
+  .badge-count .num{font-size:1.15em;}
+  .pill{
+    display:inline-flex;align-items:center;gap:.3em;border-radius:20px;
+    padding:.2vh .6vw;font-size:clamp(9px,0.7vw,11px);font-weight:700;
+  }
+  .pill-criado{background:rgba(128,192,255,.25);color:#1c5d99;}
+  .pill-despachado{background:rgba(125,125,178,.22);color:#4c4c78;}
+  .table-wrap{flex:1;min-height:0;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:clamp(9px,0.82vw,14px);}
+  table th{font-size:clamp(7.5px,0.62vw,10px);color:var(--text-secondary);text-align:left;font-weight:600;padding:.4vh 0;text-transform:uppercase;letter-spacing:.02em;}
+  table th.num,table td.num{text-align:right;}
+  table td{padding:.5vh 0;border-top:1px solid var(--border);}
+  /* cor de fundo do cabeçalho da tabela = cor do card principal associado (1:1 por nome) */
+  table thead.th-roxo th,table thead.th-amarelo th,table thead.th-neutro th{padding:.4vh .5vw;}
+  table thead.th-roxo th{background:var(--roxo);color:#ffffff;}
+  table thead.th-amarelo th{background:var(--amarelo);color:#3a2f0a;}
+  table thead.th-neutro th{background:var(--border);color:var(--text-secondary);}
+  table thead.th-roxo th:first-child,table thead.th-amarelo th:first-child,table thead.th-neutro th:first-child{border-radius:6px 0 0 6px;}
+  table thead.th-roxo th:last-child,table thead.th-amarelo th:last-child,table thead.th-neutro th:last-child{border-radius:0 6px 6px 0;}
+  /* truncamento padrão (segurança extra além do corte em JS) */
+  .nome-trunc{display:inline-block;max-width:15ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+  /* botão "Expandir" + modal de tabela completa */
+  .header-actions{display:flex;align-items:center;gap:.5vw;flex-wrap:wrap;}
+  .btn-expandir{border:none;background:rgba(0,0,0,.06);color:var(--text-secondary);border-radius:14px;padding:.2vh .7vw;font-size:clamp(9px,0.68vw,11px);font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.02em;}
+  .btn-expandir:hover{background:rgba(0,0,0,.14);}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:var(--panel-bg);border-radius:14px;width:min(92vw,1200px);max-height:88vh;display:flex;flex-direction:column;padding:1.6vh 1.6vw;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2vh;flex-shrink:0;}
+  .modal-title{font-size:clamp(13px,1.1vw,18px);font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-primary);}
+  .modal-close{border:none;background:var(--border);color:var(--text-primary);border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;flex-shrink:0;}
+  .modal-close:hover{background:var(--accent-danger);color:#fff;}
+  .modal-body{overflow:auto;flex:1;}
+  .modal-body table{width:100%;}
+  .modal-body td,.modal-body th{padding:.7vh .5vw;}
+  .badge-status{display:inline-flex;border-radius:6px;padding:.15vh .55vw;font-size:.85em;font-weight:700;text-transform:uppercase;letter-spacing:.02em;}
+  .badge-status.criado{background:var(--azul-claro);color:#16324a;}
+  .badge-status.despachado{background:var(--roxo);color:#ffffff;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .dot.red{background:var(--accent-danger);}
+  .dot.amber{background:var(--accent-warning);}
+  .tempo-cell{display:flex;align-items:center;}
+  .more-note{font-size:clamp(9px,0.72vw,12px);color:var(--text-secondary);margin-top:.5vh;flex-shrink:0;}
+  tr.total-row td{font-weight:800;border-top:2px solid var(--border);}
+  .legend-line{font-size:clamp(8.5px,0.68vw,11px);color:var(--text-secondary);margin-top:.4vh;flex-shrink:0;}
+  /* ---------- painéis "resumo geral" / "alertas críticos" ---------- */
+  .kv-row{display:flex;justify-content:space-between;align-items:center;padding:.7vh 0;border-top:1px solid var(--border);font-size:clamp(10.5px,0.85vw,14px);}
+  .kv-row:first-of-type{border-top:none;}
+  .kv-label{color:var(--text-secondary);display:flex;align-items:center;gap:.4em;}
+  .kv-value{font-weight:800;font-size:1.15em;}
+  .alert-label-row .kv-label{color:var(--accent-danger);}
+  .alert-panel .section-label{color:var(--accent-danger);}
+  .alert-panel .kv-value{color:var(--accent-danger);}
+  /* ---------- footer ---------- */
+  footer{flex-shrink:0;min-height:2px;font-size:clamp(9px,0.68vw,12px);color:var(--text-secondary);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="header-left">
+      <img src="logo-monvizo.png" alt="Monvizo" class="header-logo-corner">
+    </div>
+    <div class="header-center">
+      <span class="header-title-big">ACOMPANHAMENTO LOGÍSTICO</span>
+    </div>
+    <div class="header-right">
+      <div class="date-pill" id="datePill">--/--/----</div>
+      <div id="healthLine">
+        <span class="dot-status" id="healthDot" style="background:#a8b6c4"></span>
+        <span id="healthText">conectando...</span>
+      </div>
+      <div id="errorBanner"></div>
+    </div>
+  </header>
+
+  <!-- ===================== CARDS DE RESUMO ===================== -->
+  <div id="statusCards"></div>
+
+  <div class="body-grid">
+
+    <!-- ===================== GRID 3x2: linha 1 = Faturados não separados / Em separação / Sem entrega total;
+         linha 2 = Sem envio / Não vinculados / (célula reservada, vazia) ===================== -->
+    <div class="dash-grid">
+
+      <div class="panel">
+        <div class="panel-header-row">
+          <span class="panel-chip roxo">Faturados e não separados (&gt;1 dia)</span>
+          <div class="header-actions">
+            <span class="panel-count-pill" id="badgeFaturadoNaoSeparado"><span class="num">0</span></span>
+            <button class="btn-close-expand" onclick="abrirModal('faturadoNaoSeparado')" aria-label="Expandir">&#10005;</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead class="th-roxo"><tr><th>pd</th><th>cliente</th><th>vendedor</th><th class="num">valor</th><th>data fat.</th><th class="num">dias</th></tr></thead>
+            <tbody id="tableFaturadoNaoSeparado"></tbody>
+          </table>
+        </div>
+        <div class="more-note" id="faturadoNaoSeparadoMoreNote"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header-row">
+          <span class="panel-chip amarelo">Em separação (&gt;1 dia)</span>
+          <div class="header-actions">
+            <span class="panel-count-pill" id="badgeEstagioView"><span class="num">0</span></span>
+            <button class="btn-close-expand" onclick="abrirModal('estagioView')" aria-label="Expandir">&#10005;</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead class="th-amarelo"><tr><th>pd</th><th>cliente</th><th>vendedor</th><th class="num">valor</th><th>data fat.</th><th class="num">dias</th></tr></thead>
+            <tbody id="tableEstagioView"></tbody>
+          </table>
+        </div>
+        <div class="legend-line">● mais de 2 dias &nbsp; ● até 2 dias</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header-row">
+          <span class="panel-chip laranja">Sem entrega total (mo_3104)</span>
+          <div class="header-actions">
+            <span class="panel-count-pill" id="badgeMo3104"><span class="num">0</span></span>
+            <button class="btn-close-expand" onclick="abrirModal('mo3104')" aria-label="Expandir">&#10005;</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead class="th-neutro"><tr><th>pd</th><th>cliente</th><th>vendedor</th><th class="num">falt</th><th>data uc</th></tr></thead>
+            <tbody id="tableMo3104"></tbody>
+          </table>
+        </div>
+        <div class="more-note" id="mo3104MoreNote"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header-row">
+          <span class="panel-chip verde">Sem envio &gt; 2 dias (status criado/despachado)</span>
+          <div class="header-actions">
+            <span class="panel-count-pill hidden-pill" id="badgeSemEnvio"><span class="num">0</span></span>
+            <span class="panel-count-pill"><span id="pillCriado">C: 0</span>&nbsp;&nbsp;<span id="pillDespachado">D: 0</span></span>
+            <button class="btn-close-expand" onclick="abrirModal('semEnvio')" aria-label="Expandir">&#10005;</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead class="th-neutro"><tr><th>pd</th><th>cliente</th><th>vendedor</th><th>transp</th><th>data</th><th class="num">dias</th></tr></thead>
+            <tbody id="tableSemEnvio"></tbody>
+          </table>
+        </div>
+        <div class="more-note" id="semEnvioMoreNote"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header-row">
+          <span class="panel-chip verde">Não vinculados</span>
+          <div class="header-actions">
+            <span class="panel-count-pill" id="badgeSemIntelipost"><span class="num">0</span></span>
+            <button class="btn-close-expand" onclick="abrirModal('semIntelipostTransp')" aria-label="Expandir">&#10005;</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead class="th-neutro"><tr><th>transp</th><th class="num">qtd</th></tr></thead>
+            <tbody id="tableSemIntelipostTransp"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- célula reservada (vazia) — área mapeada para novas tabelas em etapas futuras, sem nenhum elemento -->
+      <div class="empty-slot"></div>
+
+    </div>
+
+  </div>
+
+  <footer></footer>
+
+  <!-- ===================== MODAL: tabela expandida ===================== -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) fecharModal()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitulo"></div>
+        <button class="modal-close" onclick="fecharModal()">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <table>
+          <thead id="modalThead"></thead>
+          <tbody id="modalTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO — edite estes valores antes de publicar
+   ===================================================================== */
+const CONFIG = {
+  SUPABASE_URL: 'https://mqtxiztjreailicujymj.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_hTC8AZ2og7esLgoMoNvAxQ_RhsvGNhj',
+  REFRESH_INTERVAL_MS: 4 * 60 * 1000,   // a cada quanto tempo busca dados novos no Supabase (reduzido de 90s pra 4min em 23/06/2026 pra economizar o orçamento de Disk IO do plano Free)
+  ETL_ALERTA_MINUTOS: 30,           // se o ETL não atualizar há mais que isso, mostra alerta
+  MAX_LINHAS_TABELA: 6,             // limite de linhas nos painéis pequenos (sem scroll)
+  MAX_LINHAS_TABELA_LARGA: 8,       // limite de linhas na tabela larga "sem envio"
+  DIAS_MIN_ESTAGIO: 1,              // pedidos "em separação"/"faturado, não separado" só contam com dias_no_estagio > este valor
+  INTELIPOST_CRIADO_DIAS_MIN: 2,    // pedidos "sem envio" (criado ou despachado) só contam como atrasados com mais de este nº de dias desde a emissão
+  AUTO_RELOAD_MS: 24 * 60 * 60 * 1000  // recarrega a página inteira de tempos em tempos, pra puxar uma versão nova do arquivo sem precisar de F5 na TV
+};
+
+const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+const state = {
+  pedidos: [],
+  pedidosMap: new Map(),       // pedido (string) -> linha de pd_ultimo_estagio (pra enriquecer com cliente em outras tabelas)
+  valorPorPedido: new Map(),         // "filial|pedido" -> valor_pedido, vindo de pd_item_estagio via vw_pedido_status_estagio
+  valorPorPedidoSimples: new Map(),  // pedido (string) -> valor_pedido, pra cruzar com tabelas que só têm id_pedido (sem filial)
+  historicoPedidos: [],                // linhas de historico_pedidos (eventos de FATURADO/EM SEPARAÇÃO dos últimos 7 dias)
+  ultimoHistoricoPorPedido: new Map(), // "filial|pedido" -> evento mais recente daquele pedido em historico_pedidos
+  mo3104: [],                   // linhas de mo_3104 (pedidos com qtd. faturada > qtd. entregue)
+  fPedido: [],                  // linhas de f_pedido (cabeçalho do pedido: cliente, vendedor, valores)
+  fPedidoMap: new Map(),        // id_pedido (string) -> linha de f_pedido
+  semIntelipost: [],
+  criadoDespachado: [],
+  etl: [],
+  itemEstagio: [],              // linhas de pd_item_estagio (1 por item), pra "Faturados e não separados > 1 dia"
+  faturamentoHist7: [],         // linhas de f_faturamento_hist7 (1 por item de Nota Fiscal, últimos 7 dias), pra "Faturado hoje" (notas + valor)
+  itemFaturadoQtdPendente: [],  // linhas de vw_item_faturado_qtd_pendente (item FATURADO com qtd_pedida > qtd_entregue) - fonte do painel/card "Faturados e não separados > 1 dia" (regra por quantidade)
+  lastUpdate: null,
+  lastError: null
+};
+
+/* status_resumo, a partir desta versão, vem de historico_pedidos (eventos
+   de SEPARAÇÃO/FATURAMENTO dos últimos 7 dias, calculados no ERP):
+   - 'FATURADO'      = evento de faturamento.
+   - 'EM SEPARAÇÃO'  = evento de separação (em processo).
+   Os 4 cards do topo e os painéis "Faturados e não separados > 1 dia" /
+   "Em separação > 1 dia" usam esta tabela (campo data_hora_inclusao,
+   confirmado pelo usuário) em vez do FlagEstagio de pd_item_estagio. */
+
+/* valor do pedido: corrente de fallback cruzando tabelas pedido a pedido
+   (autorizado pelo usuário), na ordem:
+   1) f_pedido.valor_total_pedido — fonte primária a partir desta versão,
+      a pedido do usuário ("usar o valor com base no valor_total_pedido
+      dessa nova tabela");
+   2) a própria linha já trouxe valor_pedido nativo (historico_pedidos
+      grava VDPVENDAC.VALOR_TOTAL em cada evento) — usado se o pedido
+      ainda não apareceu em f_pedido;
+   3) cruza por filial+pedido com pd_item_estagio (vw_pedido_status_estagio);
+   4) cruza só pelo número do pedido (sem filial) com pd_item_estagio —
+      último recurso, usado pelos painéis que só têm id_pedido. */
+function valorPorNumeroPedido(idPedido){
+  return num(state.valorPorPedidoSimples.get(String(idPedido)));
+}
+function valorPorFPedido(idPedido){
+  const f = state.fPedidoMap.get(String(idPedido));
+  return (f && f.valor_total_pedido != null && f.valor_total_pedido !== '') ? num(f.valor_total_pedido) : null;
+}
+function valorDoPedido(p){
+  const idPedido = p ? p.pedido : null;
+  const viaFPedido = valorPorFPedido(idPedido);
+  if(viaFPedido != null) return viaFPedido;
+  if(p && p.valor_pedido != null && p.valor_pedido !== '') return num(p.valor_pedido);
+  if(p && p.filial != null){
+    const viaFilialPedido = state.valorPorPedido.get(`${p.filial}|${p.pedido}`);
+    if(viaFilialPedido != null) return num(viaFilialPedido);
+  }
+  return valorPorNumeroPedido(idPedido);
+}
+
+/* eventos de historico_pedidos com o status_resumo informado, cuja
+   data_hora_inclusao é hoje (compara só a data, sem hora). */
+function eventosHojePorStatus(statusResumo){
+  return state.historicoPedidos.filter(h =>
+    h.status_resumo === statusResumo && diasDesdeData(h.data_hora_inclusao) === 0
+  );
+}
+/* mesma coisa, mas pra "ontem" (usado só pra estimar a tendência dos
+   cards, igual ao resto do painel já fazia). */
+function eventosOntemPorStatus(statusResumo){
+  return state.historicoPedidos.filter(h =>
+    h.status_resumo === statusResumo && diasDesdeData(h.data_hora_inclusao) === 1
+  );
+}
+
+/* "Faturado no dia", por pedido do usuário, passa a filtrar pelo campo
+   bruto "status" (P.STATUS do pedido no ERP, ex.: "PEDIDO FATURADO") em
+   vez do status_resumo (que era derivado do texto da OBSERVACAO do
+   evento). Diferença importante: "status" vem do cabeçalho do pedido
+   (VDPVENDAC), então é o MESMO valor repetido em TODAS as linhas de
+   historico_pedidos daquele pedido — se o pedido tiver mais de um
+   evento hoje, todas as linhas teriam o mesmo status e o mesmo
+   valor_pedido. Por isso aqui já reduzimos pra 1 linha por pedido (a
+   mais recente do dia) antes de devolver a lista, pra nunca somar o
+   valor do mesmo pedido mais de uma vez. */
+function statusBruto(h){
+  return String(h && h.status || '').trim();
+}
+function eventosPorStatusBrutoEDias(statusBrutoAlvo, diasAtras){
+  const porPedido = new Map();
+  state.historicoPedidos.forEach(h => {
+    if(statusBruto(h) !== statusBrutoAlvo) return;
+    if(diasDesdeData(h.data_hora_inclusao) !== diasAtras) return;
+    const atual = porPedido.get(h.pedido);
+    if(!atual){ porPedido.set(h.pedido, h); return; }
+    const dAtual = new Date(atual.data_hora_inclusao).getTime();
+    const dNovo = new Date(h.data_hora_inclusao).getTime();
+    if(dNovo > dAtual || (dNovo === dAtual && intNum(h.sequencia) > intNum(atual.sequencia))){
+      porPedido.set(h.pedido, h);
+    }
+  });
+  return Array.from(porPedido.values());
+}
+function pedidosFaturadosNoDia(){
+  return eventosPorStatusBrutoEDias('PEDIDO FATURADO', 0);
+}
+function pedidosFaturadosOntem(){
+  return eventosPorStatusBrutoEDias('PEDIDO FATURADO', 1);
+}
+
+/* "Faturado hoje" (card do topo) — pedido do usuário: em vez de contar
+   PEDIDOS faturados (historico_pedidos), contar NOTAS FISCAIS de venda
+   emitidas hoje (e o valor delas), vindas de f_faturamento_hist7. Essa
+   tabela tem 1 linha por ITEM de nota fiscal, então:
+   - p/ "quantidade de notas" precisamos contar NFs distintas, dedupe por
+     id_filial+serie_nf+id_nota_fiscal+fl_entrada_saida;
+   - p/ "valor das notas" usamos valor_total_nf (= NF.VALOR_TOTAL, valor de
+     CABEÇALHO da nota), que vem repetido em todas as linhas de item da
+     mesma NF — por isso pegamos 1 valor por NF (dedupe), e NÃO somamos
+     valor_total dos itens, que é menor que o total real da nota (a query
+     no ERP filtra alguns itens por FlagTipoComissao/NIVEL01).
+   Filtro de "nota de venda": tipo_movimentacao = 'Saida' (exclui
+   Devolução/Serviço) e fl_cancelado != 'S' (exclui notas canceladas). */
+function notaCancelada(it){
+  return String(it && it.fl_cancelado || '').trim().toUpperCase() === 'S';
+}
+function itensNotasFaturadasNoDia(diasAtras){
+  if(!state.faturamentoHist7 || !state.faturamentoHist7.length) return [];
+  return state.faturamentoHist7.filter(it =>
+    it.tipo_movimentacao === 'Saida' &&
+    !notaCancelada(it) &&
+    diasDesdeData(it.dt_nf_emissao) === diasAtras
+  );
+}
+function notasFiscaisDistintas(itens){
+  const chaves = new Set();
+  itens.forEach(it => {
+    chaves.add(`${it.id_filial}|${it.serie_nf}|${it.id_nota_fiscal}|${it.fl_entrada_saida}`);
+  });
+  return chaves.size;
+}
+/* pedidos distintos com NF de venda válida emitida no dia (mesma fonte do
+   card "Notas fiscais faturadas no dia") — usado como denominador da %
+   "do faturado no dia" no card "Pedidos separados no dia", no lugar do
+   status bruto de historico_pedidos (que não é atualizado de forma
+   confiável pelo ERP e fazia a % ficar sempre em 0%). NFs sem id_pedido
+   vinculado (ver task #79) não entram aqui, pois não tem como saber se
+   esse pedido foi separado. */
+function pedidosDistintosFaturadosViaNf(diasAtras){
+  const itens = itensNotasFaturadasNoDia(diasAtras).filter(it => it.id_pedido != null && it.id_pedido !== '');
+  return new Set(itens.map(it => String(it.id_pedido))).size;
+}
+function valorNotasFiscais(itens){
+  // 1 valor por NF (dedupe) usando valor_total_nf (= NF.VALOR_TOTAL, valor
+  // de cabeçalho da nota) — não soma valor_total dos itens, pra não
+  // duplicar nem ficar menor que o total real da NF.
+  const porNota = new Map();
+  itens.forEach(it => {
+    const chave = `${it.id_filial}|${it.serie_nf}|${it.id_nota_fiscal}|${it.fl_entrada_saida}`;
+    if(!porNota.has(chave)){
+      const valor = (it.valor_total_nf !== null && it.valor_total_nf !== undefined)
+        ? num(it.valor_total_nf)
+        : num(it.valor_total);
+      porNota.set(chave, valor);
+    }
+  });
+  let soma = 0;
+  porNota.forEach(v => { soma += v; });
+  return soma;
+}
+function pedidosSeparadosNoDia(){
+  return eventosHojePorStatus('EM SEPARAÇÃO');
+}
+
+/* p/ cada pedido (em TODO o histórico de 7 dias de f_faturamento_hist7,
+   não só hoje), descobre se ele tem NF de venda válida (Saida, não
+   cancelada) emitida hoje — usado pra separar, dentro do card "Pedidos
+   separados no dia", quantos desses pedidos foram faturados hoje x em
+   outro dia (mesma lógica da coluna "faturado" da auditoria). */
+function pedidosComNfHojeSet(){
+  const set = new Set();
+  (state.faturamentoHist7 || []).forEach(it => {
+    if(it.tipo_movimentacao !== 'Saida' || notaCancelada(it)) return;
+    if(it.id_pedido == null || it.id_pedido === '') return;
+    if(diasDesdeData(it.dt_nf_emissao) === 0) set.add(String(it.id_pedido));
+  });
+  return set;
+}
+/* divide os pedidos separados no dia em "faturado hoje" x "faturado em
+   outro dia / sem NF encontrada" — pedido do usuário: mostrar essa
+   quebra direto no card, sem precisar abrir a auditoria. */
+function separadosNoDiaPorFaturamento(){
+  const comNfHoje = pedidosComNfHojeSet();
+  const pedidos = new Set(pedidosSeparadosNoDia().map(p => String(p.pedido)));
+  let hoje = 0, outroDia = 0;
+  pedidos.forEach(pedido => {
+    if(comNfHoje.has(pedido)) hoje++; else outroDia++;
+  });
+  return { hoje, outroDia };
+}
+
+/* valor de "Pedidos separados no dia" — pedido do usuário: separação
+   acontece DEPOIS do faturamento (primeiro fatura, depois separa), então
+   todo pedido separado já tem NF emitida. Por isso o valor do card não
+   usa mais valor_pedido (P.VALOR_TOTAL) — usa o valor da própria NF
+   daquele pedido, vindo de f_faturamento_hist7 (que tem id_pedido =
+   pvc.PEDIDO, o mesmo número de pedido de historico_pedidos.pedido).
+   Fluxo: historico_pedidos (separado no dia) -> pedido -> NF do pedido
+   (f_faturamento_hist7.id_pedido) -> valor_total_nf dessa NF. Resultado
+   esperado: igual ou menor que o valor faturado no dia (nunca maior,
+   já que separação só ocorre depois de faturar). */
+function nfsPorPedidoMap(){
+  const map = new Map(); // id_pedido (string) -> Map(chave da NF -> valor_total_nf)
+  (state.faturamentoHist7 || []).forEach(it => {
+    if(it.id_pedido == null || it.id_pedido === '') return;
+    const idPedido = String(it.id_pedido);
+    const chaveNf = `${it.id_filial}|${it.serie_nf}|${it.id_nota_fiscal}|${it.fl_entrada_saida}`;
+    if(!map.has(idPedido)) map.set(idPedido, new Map());
+    const porNota = map.get(idPedido);
+    if(!porNota.has(chaveNf)){
+      const valor = (it.valor_total_nf !== null && it.valor_total_nf !== undefined)
+        ? num(it.valor_total_nf)
+        : num(it.valor_total);
+      porNota.set(chaveNf, valor);
+    }
+  });
+  return map;
+}
+function valorNfDosPedidos(pedidos){
+  const mapaNf = nfsPorPedidoMap();
+  const notasContadas = new Set(); // evita contar a mesma NF 2x se 2 "pedidos" da lista caírem na mesma nota
+  let soma = 0;
+  pedidos.forEach(p => {
+    const porNota = mapaNf.get(String(p.pedido));
+    if(!porNota) return;
+    porNota.forEach((valor, chaveNf) => {
+      if(notasContadas.has(chaveNf)) return;
+      notasContadas.add(chaveNf);
+      soma += valor;
+    });
+  });
+  return soma;
+}
+
+/* pra cada pedido, olha o evento MAIS RECENTE conhecido em
+   historico_pedidos (state.ultimoHistoricoPorPedido) e filtra quem está
+   "parado" com aquele status há mais de diasMin dias — ou seja, o último
+   evento conhecido daquele pedido é desse status e já passou diasMin dias
+   desde então (sem evento mais novo que o supere). */
+function pedidosUltimoStatusAcimaDe(statusResumo, diasMin){
+  const linhas = [];
+  state.ultimoHistoricoPorPedido.forEach(h => {
+    if(h.status_resumo !== statusResumo) return;
+    const dias = diasDesdeData(h.data_hora_inclusao);
+    if(dias !== null && dias > diasMin){
+      linhas.push({ ...h, dias_no_estagio: dias, nome_cliente: lookupCliente(h.pedido), nome_vendedor: lookupVendedor(h.pedido) });
+    }
+  });
+  return linhas;
+}
+/* mesma ideia, mas filtrando pelo campo bruto "status" (P.STATUS do
+   pedido) em vez do status_resumo — pedido do usuário, mesma lógica
+   aplicada em pedidosFaturadosNoDia(). state.ultimoHistoricoPorPedido já
+   tem só 1 linha por pedido (a mais recente conhecida), então aqui não
+   tem risco de duplicar valor. */
+function pedidosUltimoStatusBrutoAcimaDe(statusBrutoAlvo, diasMin){
+  const linhas = [];
+  state.ultimoHistoricoPorPedido.forEach(h => {
+    if(statusBruto(h) !== statusBrutoAlvo) return;
+    const dias = diasDesdeData(h.data_hora_inclusao);
+    if(dias !== null && dias > diasMin){
+      linhas.push({ ...h, dias_no_estagio: dias, nome_cliente: lookupCliente(h.pedido), nome_vendedor: lookupVendedor(h.pedido) });
+    }
+  });
+  return linhas;
+}
+/* "Faturados e não separados > 1 dia" — pedido do usuário: ler direto de
+   pd_item_estagio (1 linha por ITEM) em vez do histórico de eventos, e
+   olhar a coluna flag_estagio. O pedido só avança de estágio quando
+   TODOS os itens avançam, então o estágio real do pedido é o do item
+   mais atrasado (MIN(flag_estagio) entre os itens do pedido — mesma
+   regra já usada na view vw_pedido_status_estagio). Aqui filtramos
+   especificamente MIN(flag_estagio) === 301 (faturado, ainda não
+   liberado p/ separação), e trazemos vendedor + data do pedido
+   (data_emissao) de qualquer item do pedido (esses campos são os mesmos
+   em todas as linhas de um mesmo pedido, igual valor_pedido). diasExcluir
+   permite simular "ontem" pro indicador de tendência. */
+function pedidosFlagEstagioExato(flagAlvo, diasExcluir){
+  if(!state.itemEstagio || !state.itemEstagio.length) return [];
+  const porPedido = new Map();
+  state.itemEstagio.forEach(it => {
+    const chave = `${it.filial}|${it.pedido}`;
+    const flag = intNum(it.flag_estagio);
+    const atual = porPedido.get(chave);
+    if(!atual){
+      porPedido.set(chave, {
+        filial: it.filial,
+        pedido: it.pedido,
+        flagMin: flag,
+        data_emissao: it.data_emissao,
+        nome_vendedor: it.nome_vendedor
+      });
+    } else if(flag < atual.flagMin){
+      atual.flagMin = flag;
+    }
+  });
+  const linhas = [];
+  porPedido.forEach(p => {
+    if(p.flagMin !== flagAlvo) return;
+    const dias = diasDesdeData(p.data_emissao);
+    if(dias !== null && dias !== diasExcluir){
+      linhas.push({
+        filial: p.filial,
+        pedido: p.pedido,
+        nome_vendedor: p.nome_vendedor || '—',
+        data_emissao: p.data_emissao,
+        dias_no_estagio: dias
+      });
+    }
+  });
+  return linhas;
+}
+/* "Faturado e não separado", validado por QUANTIDADE (não só pelo status):
+   itens com flag_estagio = 301 (faturado) E qtd_pedida > qtd_entregue,
+   vindos de vw_item_faturado_qtd_pendente (já filtrados na própria view).
+   Substitui a regra antiga, baseada só no status/flag_estagio, que o
+   usuário relatou não estar sempre atualizado corretamente pelo ERP.
+   diasExcluir segue o mesmo padrão de pedidosFlagEstagioExato (0 = exclui
+   quem foi emitido hoje, ">1 dia"; 1 = aproximação usada por calcOntem). */
+function pedidosFaturadoNaoSeparado(diasExcluir = 0){
+  if(!state.itemFaturadoQtdPendente || !state.itemFaturadoQtdPendente.length) return [];
+  return state.itemFaturadoQtdPendente.filter(it => {
+    const dias = diasDesdeData(it.data_emissao);
+    return dias !== null && dias !== diasExcluir;
+  });
+}
+/* Mapa "filial|pedido" -> menor flag_estagio entre os itens do pedido,
+   ou seja, o estágio ATUAL real do pedido agora (mesma regra de
+   vw_pedido_status_estagio: MIN(flag_estagio) entre os itens). Usado
+   pela validação dupla de pedidosEstagioView() abaixo. */
+function flagEstagioAtualMinPorPedido(){
+  const mapa = new Map();
+  if(!state.itemEstagio) return mapa;
+  state.itemEstagio.forEach(it => {
+    const chave = `${it.filial}|${it.pedido}`;
+    const flag = intNum(it.flag_estagio);
+    const atual = mapa.get(chave);
+    if(atual === undefined || flag < atual) mapa.set(chave, flag);
+  });
+  return mapa;
+}
+const FLAG_EM_SEPARACAO = 451; // mesmo valor usado em vw_pedido_status_estagio p/ classificar 'SEPARAÇÃO'
+/* pedidos cujo último evento conhecido é "EM SEPARAÇÃO" (em processo),
+   parados há mais de DIAS_MIN_ESTAGIO dias.
+   Validação dupla (pedido do usuário em 24/06/2026): o histórico
+   (historico_pedidos) às vezes não é atualizado quando o item já
+   avançou de estágio na prática — isso gera falso positivo (pedido
+   consta "em separação" no histórico, mas já foi separado de fato).
+   Pra contornar, agora só conta o pedido se as DUAS fontes baterem:
+   1) último estágio no histórico == "EM SEPARAÇÃO" E
+   2) estágio ATUAL do item (pd_item_estagio.flag_estagio, MIN por
+      pedido) também == 451 (SEPARAÇÃO). Se o item já avançou (ex:
+      flag_estagio >= 501 = SEPARADO) mas o histórico ainda não
+      registrou isso, o pedido agora é excluído corretamente. */
+function pedidosEstagioView(diasMin){
+  if(diasMin === undefined) diasMin = CONFIG.DIAS_MIN_ESTAGIO;
+  const flagAtualPorPedido = flagEstagioAtualMinPorPedido();
+  return pedidosUltimoStatusAcimaDe('EM SEPARAÇÃO', diasMin).filter(h => {
+    const chave = `${h.filial}|${h.pedido}`;
+    return flagAtualPorPedido.get(chave) === FLAG_EM_SEPARACAO;
+  });
+}
+function countDistinctPedidos(lista){
+  return new Set(lista.map(p => p.pedido)).size;
+}
+function somaValor(lista){
+  return lista.reduce((acc, p) => acc + valorDoPedido(p), 0);
+}
+
+/* dias corridos entre uma data e hoje (comparando só a data, sem hora) */
+function diasDesdeData(dataStr){
+  const d = new Date(dataStr);
+  if(isNaN(d.getTime())) return null;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const dia = new Date(d); dia.setHours(0, 0, 0, 0);
+  return Math.floor((hoje - dia) / 86400000);
+}
+/* pra cada pedido em pd_criado_despachado_intelipost, escolhe a situação
+   mais avançada conhecida (DESPACHADO tem prioridade sobre CRIADO) e
+   devolve só quem está parado nessa situação há mais de diasMin dias. */
+function pedidosSemEnvioDetalhado(diasMin){
+  const porPedido = new Map();
+  state.criadoDespachado.forEach(p => {
+    const atual = porPedido.get(p.id_pedido);
+    if(!atual || (String(p.flagsituacao) === '811' && String(atual.flagsituacao) !== '811')){
+      porPedido.set(p.id_pedido, p);
+    }
+  });
+  const linhas = [];
+  porPedido.forEach(p => {
+    const dias = diasDesdeData(p.dt_pedido_emissao);
+    if(dias !== null && dias > diasMin) linhas.push({ ...p, dias_sem_envio: dias });
+  });
+  return linhas.sort((a, b) => b.dias_sem_envio - a.dias_sem_envio);
+}
+
+/* enriquecimento client-side: pd_sem_intelipost e
+   pd_criado_despachado_intelipost não trazem cliente/vendedor/valor,
+   então buscamos pelo número do pedido em outras fontes já carregadas.
+   f_pedido (cabeçalho do pedido) é a fonte primária de nome_cliente/
+   nome_vendedor a partir desta versão; pd_ultimo_estagio fica como
+   fallback pra cliente, caso o pedido ainda não tenha chegado em
+   f_pedido. */
+function lookupPedido(idPedido){
+  return state.pedidosMap.get(String(idPedido)) || null;
+}
+function lookupCliente(idPedido){
+  const f = state.fPedidoMap.get(String(idPedido));
+  if(f && f.nome_cliente) return f.nome_cliente;
+  const p = lookupPedido(idPedido);
+  return (p && p.nome_cliente) ? p.nome_cliente : '—';
+}
+function lookupVendedor(idPedido){
+  const f = state.fPedidoMap.get(String(idPedido));
+  return (f && f.nome_vendedor) ? f.nome_vendedor : '—';
+}
+/* valor: ver valorDoPedido/valorPorFPedido (f_pedido.valor_total_pedido
+   é a fonte primária); aqui só sobra o fallback pra quando o pedido
+   ainda não está em f_pedido nem na view vw_pedido_status_estagio. */
+function lookupValor(idPedido){
+  const viaFPedido = valorPorFPedido(idPedido);
+  if(viaFPedido != null) return viaFPedido;
+  return valorPorNumeroPedido(idPedido);
+}
+
+/* ícones (SVG inline, 24x24) usados nos cards de resumo */
+const ICONS = {
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>'
+};
+
+/* Os 4 cards do topo seguem a paleta confirmada pelo usuário (chumbo,
+   azul claro, roxo, amarelo). "calcOntem" estima o valor do dia anterior
+   a partir da própria coluna dias_no_estagio (sem precisar de uma tabela
+   de histórico): para os indicadores "no dia", dias_no_estagio === 1 já é
+   exatamente "entrou ontem"; para os de backlog acumulado, é uma
+   aproximação por baixo (não conta quem saiu do backlog entre ontem e
+   hoje). */
+const INDICADORES = [
+  {
+    label: 'Faturados no dia', cls: 'chumbo', icon: 'file', trendGoodDir: 'up',
+    unidade: '',
+    calc: () => notasFiscaisDistintas(itensNotasFaturadasNoDia(0)),
+    calcOntem: () => notasFiscaisDistintas(itensNotasFaturadasNoDia(1)),
+    calcValor: () => valorNotasFiscais(itensNotasFaturadasNoDia(0)),
+    valorLabel: 'valor faturado',
+    /* pedido do usuário: além do %, mostrar também o valor financeiro e a
+       quantidade absoluta (não só a variação) referentes ao dia anterior */
+    calcValorOntem: () => valorNotasFiscais(itensNotasFaturadasNoDia(1)),
+    ontemDetalheLabel: 'ontem'
+  },
+  {
+    label: 'Separados no dia', cls: 'azul', icon: 'box', trendGoodDir: 'up',
+    unidade: '',
+    calc: () => countDistinctPedidos(pedidosSeparadosNoDia()),
+    calcOntem: () => countDistinctPedidos(eventosOntemPorStatus('EM SEPARAÇÃO')),
+    calcValor: () => valorNfDosPedidos(pedidosSeparadosNoDia()),
+    valorLabel: 'valor separado (NF)',
+    calcPercentual: () => {
+      const valorFaturadoHoje = valorNotasFiscais(itensNotasFaturadasNoDia(0));
+      const valorSeparado = valorNfDosPedidos(pedidosSeparadosNoDia());
+      return valorFaturadoHoje > 0 ? (valorSeparado / valorFaturadoHoje) * 100 : 0;
+    },
+    percentualLabel: 'do faturado no dia (valor)',
+    calcSplit: () => separadosNoDiaPorFaturamento()
+  },
+  {
+    label: 'Faturados e não separados (>1 dia)', cls: 'roxo', icon: 'alert', trendGoodDir: 'down',
+    calc: () => countDistinctPedidos(pedidosFaturadoNaoSeparado()),
+    calcOntem: () => countDistinctPedidos(pedidosFaturadoNaoSeparado(1))
+  },
+  {
+    label: 'Em separação (>1 dia)', cls: 'amarelo', icon: 'clock', trendGoodDir: 'down',
+    calc: () => countDistinctPedidos(pedidosEstagioView()),
+    calcOntem: () => countDistinctPedidos(pedidosEstagioView(CONFIG.DIAS_MIN_ESTAGIO + 1))
+  }
+];
+
+/* ---------------------- helpers ---------------------- */
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function intNum(v){ const n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+function fmtDate(dateStr){
+  if(!dateStr) return '—';
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('pt-BR');
+}
+function fmtDateTime(date){
+  if(!date) return '—';
+  return date.toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function fmtCurrency(v){
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function minutesSince(date){
+  if(!date) return null;
+  return Math.floor((Date.now() - date.getTime()) / 60000);
+}
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+/* formatação de nomes (transportadora/vendedor/cliente): mostra só a
+   primeira palavra e, como segurança, corta em ~15 caracteres pra não
+   espremer o layout das tabelas */
+function primeiraPalavra(str){
+  if(!str) return '';
+  return String(str).trim().split(/\s+/)[0];
+}
+function truncarTexto(str, max = 15){
+  if(!str) return '';
+  const s = String(str);
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+}
+function formatarNome(str){
+  const v = primeiraPalavra(str);
+  return v ? truncarTexto(v) : '—';
+}
+/* calcula % de variação entre hoje e a estimativa de ontem, já classificando
+   se a variação é "boa" (good) ou "ruim" (bad) de acordo com o sentido
+   desejado de cada indicador (trendGoodDir). */
+function trendInfo(hoje, ontem, goodDir){
+  let pct, dir;
+  if(ontem === 0){
+    pct = hoje === 0 ? 0 : 100;
+    dir = hoje === 0 ? 'flat' : 'up';
+  } else {
+    const delta = ((hoje - ontem) / ontem) * 100;
+    pct = Math.abs(delta);
+    dir = delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
+  }
+  const cls = dir === 'flat' ? 'flat' : (dir === goodDir ? 'good' : 'bad');
+  const arrow = dir === 'up' ? '▲' : (dir === 'down' ? '▼' : '▬');
+  return { pct, arrow, cls };
+}
+
+/* agrupa pedidos sem Intelipost por transportadora, com contagem e valor
+   total (valor vem por lookup em pd_ultimo_estagio, via número do pedido) */
+function semIntelipostPorTransportadora(){
+  const counts = {};
+  state.semIntelipost.forEach(p => {
+    const t = p.transportadora || 'Não informado';
+    if(!counts[t]) counts[t] = { transportadora: t, qtde: 0, valor: 0 };
+    counts[t].qtde += 1;
+    counts[t].valor += lookupValor(p.id_pedido);
+  });
+  return Object.values(counts).sort((a, b) => b.qtde - a.qtde);
+}
+
+/* ---------------------- fetch ---------------------- */
+/* O Supabase/PostgREST limita cada select a no máximo 1000 linhas por
+   padrão. pd_ultimo_estagio passa bem disso (~8800 linhas), então
+   buscamos em páginas de 1000 até não vir mais nada. */
+async function fetchTodasLinhas(tabela, filtro){
+  const PAGE = 1000;
+  let from = 0;
+  let linhas = [];
+  while(true){
+    let q = sb.from(tabela).select('*').range(from, from + PAGE - 1);
+    if(filtro) q = filtro(q);
+    const { data, error } = await q;
+    if(error) throw error;
+    linhas = linhas.concat(data || []);
+    if(!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return linhas;
+}
+
+/* cada tabela é buscada de forma independente (Promise.allSettled): se
+   uma consulta falhar (ex.: timeout numa view pesada), as demais ainda
+   atualizam normalmente, e a tabela que falhou mantém os ÚLTIMOS DADOS
+   BONS já carregados em vez de zerar o painel inteiro. */
+async function fetchAll(){
+  const ESPECIFICACOES = [
+    { chave: 'pedidos',          tabela: 'pd_ultimo_estagio' },
+    { chave: 'semIntelipost',    tabela: 'pd_sem_intelipost' },
+    { chave: 'criadoDespachado', tabela: 'pd_criado_despachado_intelipost' },
+    { chave: 'etl',              tabela: 'etl_controle' },
+    { chave: 'statusEstagio',    tabela: 'vw_pedido_status_estagio' },
+    { chave: 'historicoPedidos', tabela: 'historico_pedidos' },
+    { chave: 'mo3104',           tabela: 'mo_3104' },
+    { chave: 'fPedido',          tabela: 'f_pedido' },
+    /* pd_item_estagio só cresce desde 2026-01-01 (já passou de 3,6 milhões
+       de linhas) e não tem filtro nenhum aqui — por isso o SELECT * sem
+       WHERE varre a tabela inteira a cada página, toda vez que o painel
+       atualiza, e isso passou a estourar o statement_timeout do Supabase
+       (erro "canceling statement due to statement timeout" em
+       pd_item_estagio, vw_pedido_status_estagio e
+       vw_item_faturado_qtd_pendente ao mesmo tempo — as duas views também
+       leem dessa mesma tabela, então a varredura pesada disputa recursos
+       com elas). Os dois lugares que usam state.itemEstagio só precisam
+       do MENOR flag_estagio por pedido pra saber se ele já está "FATURADO"
+       (301/351/401) ou "EM SEPARAÇÃO" (451) — pedidos já 100% SEPARADOS
+       (flag_estagio >= 501) nunca batem esse filtro e só inflam a busca
+       sem mudar o resultado. Filtrando flag_estagio < 501 aqui (com o
+       índice parcial idx_pd_item_estagio_ativo, ver
+       19_pd_item_estagio_indice_ativos.sql) reduz a varredura de milhões
+       de linhas pra só os itens ainda ativos. */
+    { chave: 'itemEstagio',      tabela: 'pd_item_estagio', filtro: q => q.lt('flag_estagio', 501) },
+    { chave: 'faturamentoHist7', tabela: 'f_faturamento_hist7' },
+    { chave: 'faturadoQtdPendente', tabela: 'vw_item_faturado_qtd_pendente' }
+  ];
+
+  const resultados = await Promise.allSettled(
+    ESPECIFICACOES.map(e => fetchTodasLinhas(e.tabela, e.filtro))
+  );
+
+  const dados = {};
+  const falhas = [];
+  resultados.forEach((r, i) => {
+    const { chave, tabela } = ESPECIFICACOES[i];
+    if(r.status === 'fulfilled'){
+      dados[chave] = r.value;
+    } else {
+      const msg = (r.reason && r.reason.message) ? r.reason.message : String(r.reason);
+      falhas.push(`${tabela} (${msg})`);
+      console.error(`Erro ao buscar ${tabela}:`, r.reason);
+    }
+  });
+
+  if(dados.pedidos){
+    state.pedidos = dados.pedidos;
+    state.pedidosMap = new Map(dados.pedidos.filter(p => p.pedido != null).map(p => [String(p.pedido), p]));
+  }
+  if(dados.statusEstagio){
+    state.valorPorPedido = new Map(dados.statusEstagio.map(r => [`${r.filial}|${r.pedido}`, r.valor_pedido]));
+    state.valorPorPedidoSimples = new Map(
+      dados.statusEstagio.filter(r => r.pedido != null).map(r => [String(r.pedido), r.valor_pedido])
+    );
+  }
+  if(dados.semIntelipost) state.semIntelipost = dados.semIntelipost;
+  if(dados.criadoDespachado) state.criadoDespachado = dados.criadoDespachado;
+  if(dados.etl) state.etl = dados.etl;
+  if(dados.mo3104) state.mo3104 = dados.mo3104;
+  if(dados.itemEstagio) state.itemEstagio = dados.itemEstagio;
+  if(dados.faturamentoHist7) state.faturamentoHist7 = dados.faturamentoHist7;
+  if(dados.faturadoQtdPendente) state.itemFaturadoQtdPendente = dados.faturadoQtdPendente;
+  if(dados.fPedido){
+    state.fPedido = dados.fPedido;
+    state.fPedidoMap = new Map(dados.fPedido.filter(f => f.id_pedido != null).map(f => [String(f.id_pedido), f]));
+  }
+
+  /* historico_pedidos guarda 1 linha por EVENTO (filial+pedido+
+     sequencia), não 1 por pedido. Pros cards "no dia" usamos a lista
+     crua (state.historicoPedidos); pra ">1 dia" precisamos primeiro
+     reduzir pra "o evento mais recente de cada pedido" (por
+     data_hora_inclusao, com sequencia como critério de desempate). */
+  if(dados.historicoPedidos){
+    state.historicoPedidos = dados.historicoPedidos;
+    const ultimoMap = new Map();
+    dados.historicoPedidos.forEach(h => {
+      const chave = `${h.filial}|${h.pedido}`;
+      const atual = ultimoMap.get(chave);
+      if(!atual){ ultimoMap.set(chave, h); return; }
+      const dataAtual = new Date(atual.data_hora_inclusao).getTime();
+      const dataNova = new Date(h.data_hora_inclusao).getTime();
+      if(dataNova > dataAtual || (dataNova === dataAtual && intNum(h.sequencia) > intNum(atual.sequencia))){
+        ultimoMap.set(chave, h);
+      }
+    });
+    state.ultimoHistoricoPorPedido = ultimoMap;
+  }
+
+  state.lastUpdate = new Date();
+  state.lastError = falhas.length
+    ? `falha ao atualizar ${falhas.join('; ')} — exibindo últimos dados dessa(s) tabela(s)`
+    : null;
+
+  renderAll();
+}
+
+/* ---------------------- render: header / saúde ---------------------- */
+function renderHeader(){
+  const text = document.getElementById('healthText');
+  const errorBanner = document.getElementById('errorBanner');
+
+  const minsAgo = minutesSince(state.lastUpdate);
+  const dataHoraTxt = state.lastUpdate
+    ? `${state.lastUpdate.toLocaleDateString('pt-BR')} às ${state.lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : null;
+
+  if(state.lastError){
+    text.style.color = cssVar('--accent-danger');
+    text.textContent = dataHoraTxt ? `Falha ao atualizar — últimos dados de ${dataHoraTxt}` : 'Falha ao atualizar — exibindo últimos dados';
+  } else if(minsAgo !== null && minsAgo > CONFIG.ETL_ALERTA_MINUTOS){
+    text.style.color = cssVar('--accent-warning');
+    text.textContent = `Última atualização: ${dataHoraTxt} (sem atualização há ${minsAgo} min)`;
+  } else {
+    text.style.color = '';
+    text.textContent = dataHoraTxt ? `Última atualização: ${dataHoraTxt}` : 'conectando...';
+  }
+
+  if(state.lastError){
+    errorBanner.style.display = 'block';
+    errorBanner.textContent = `Falha ao atualizar (${state.lastError}). Exibindo últimos dados.`;
+  } else {
+    errorBanner.style.display = 'none';
+  }
+}
+
+/* ---------------------- render: cards de resumo ---------------------- */
+function renderStatusCards(){
+  const cardsHtml = INDICADORES.map(def => {
+    const hoje = def.calc();
+    const ontem = def.calcOntem ? def.calcOntem() : null;
+    const trend = ontem === null ? null : trendInfo(hoje, ontem, def.trendGoodDir);
+    const unidadeTxt = def.unidade === undefined ? 'pedidos' : def.unidade;
+    const valorLinha = def.calcValor
+      ? `<div class="status-card-valor">${fmtCurrency(def.calcValor())} <span class="valor-label">${escapeHtml(def.valorLabel)}</span></div>`
+      : '';
+    const percentualLinha = def.calcPercentual
+      ? `<div class="status-card-valor">${def.calcPercentual().toFixed(1)}% <span class="valor-label">${escapeHtml(def.percentualLabel)}</span></div>`
+      : '';
+    const splitLinha = def.calcSplit
+      ? (() => {
+          const s = def.calcSplit();
+          return `<div class="status-card-split"><span><b>${s.hoje}</b> faturado hoje</span><span><b>${s.outroDia}</b> faturado em outro dia</span></div>`;
+        })()
+      : '';
+    /* pedido do usuário (card "Faturado no dia"): além da % de variação,
+       mostrar também o valor financeiro e a quantidade absoluta de ontem */
+    const ontemDetalheLinha = (def.calcValorOntem && ontem !== null)
+      ? `<div class="status-card-ontem">${ontem.toLocaleString('pt-BR')} ${escapeHtml(def.unidade || '')} · ${fmtCurrency(def.calcValorOntem())} <span class="valor-label">${escapeHtml(def.ontemDetalheLabel || 'ontem')}</span></div>`
+      : '';
+    return `
+      <div class="status-card ${def.cls}">
+        <div class="status-card-top">
+          <span class="status-card-icon">${ICONS[def.icon] || ''}</span>
+          <span class="status-card-label">${escapeHtml(def.label)}</span>
+        </div>
+        <div class="status-card-value">${hoje.toLocaleString('pt-BR')}${unidadeTxt ? ` <span class="status-card-unit">${escapeHtml(unidadeTxt)}</span>` : ''}</div>
+        ${valorLinha}
+        ${percentualLinha}
+        ${splitLinha}
+        ${trend ? `<div class="status-card-trend ${trend.cls}">${trend.arrow} ${trend.pct.toFixed(1)}% <span class="trend-note">vs dia anterior</span></div>` : ''}
+        ${ontemDetalheLinha}
+      </div>`;
+  }).join('');
+
+  document.getElementById('statusCards').innerHTML = cardsHtml;
+}
+
+/* ---------------------- render: painel "faturados, não separados" (validado por quantidade) ---------------------- */
+/* agrupado por pedido (soma qtd_pendente dos itens) pra caber em 1/3 da linha,
+   junto com os painéis "em separação" e "sem intelipost" */
+/* registro de dados completos (não cortados) de cada tabela, usado
+   pelo botão "Expandir" pra abrir o modal com a lista inteira */
+const MODAL_DATA = {};
+function abrirModal(chave){
+  const d = MODAL_DATA[chave];
+  if(!d) return;
+  document.getElementById('modalTitulo').textContent = d.titulo;
+  const thead = document.getElementById('modalThead');
+  thead.className = d.theadClass || '';
+  thead.innerHTML = d.thead;
+  document.getElementById('modalTbody').innerHTML = d.body;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function fecharModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') fecharModal(); });
+
+function renderPainelFaturadoNaoSeparado(){
+  const itens = pedidosFaturadoNaoSeparado();
+  document.querySelector('#badgeFaturadoNaoSeparado .num').textContent = countDistinctPedidos(itens);
+
+  const porPedido = new Map();
+  itens.forEach(it => {
+    const chave = it.pedido;
+    if(!porPedido.has(chave)){
+      porPedido.set(chave, { pedido: it.pedido, filial: it.filial, nome_vendedor: it.nome_vendedor, data_emissao: it.data_emissao });
+    }
+  });
+  const rows = Array.from(porPedido.values()).map(p => ({
+    ...p,
+    nome_cliente: lookupCliente(p.pedido),
+    valor: valorDoPedido(p),
+    dias: diasDesdeData(p.data_emissao)
+  })).sort((a, b) => (b.dias || 0) - (a.dias || 0));
+
+  const linhaHtml = p => {
+    const dotCls = p.dias > 2 ? 'red' : 'amber';
+    return `
+    <tr>
+      <td>${escapeHtml(p.pedido)}</td>
+      <td>${escapeHtml(formatarNome(p.nome_cliente))}</td>
+      <td>${escapeHtml(formatarNome(p.nome_vendedor))}</td>
+      <td class="num">${fmtCurrency(p.valor)}</td>
+      <td>${fmtDate(p.data_emissao)}</td>
+      <td><span class="tempo-cell"><span class="dot ${dotCls}"></span>${p.dias}</span></td>
+    </tr>`;
+  };
+
+  const shown = rows.slice(0, CONFIG.MAX_LINHAS_TABELA);
+  document.getElementById('tableFaturadoNaoSeparado').innerHTML = shown.map(linhaHtml).join('');
+
+  const restante = rows.length - shown.length;
+  document.getElementById('faturadoNaoSeparadoMoreNote').textContent =
+    restante > 0 ? `+ ${restante} pedido(s) não exibido(s)` : '';
+
+  MODAL_DATA.faturadoNaoSeparado = {
+    titulo: 'Faturados e não separados (>1 dia)',
+    theadClass: 'th-roxo',
+    thead: '<tr><th>pd</th><th>cliente</th><th>vendedor</th><th class="num">valor</th><th>data fat.</th><th class="num">dias</th></tr>',
+    body: rows.map(linhaHtml).join('')
+  };
+}
+
+/* ---------------------- render: painel "em separação" ---------------------- */
+function renderPainelEstagioView(){
+  const rows = pedidosEstagioView().slice().sort((a, b) => intNum(b.dias_no_estagio) - intNum(a.dias_no_estagio));
+  document.querySelector('#badgeEstagioView .num').textContent = rows.length;
+
+  const linhaHtml = p => {
+    const dias = intNum(p.dias_no_estagio);
+    const dotCls = dias > 2 ? 'red' : 'amber';
+    return `
+    <tr>
+      <td>${escapeHtml(p.pedido)}</td>
+      <td>${escapeHtml(formatarNome(p.nome_cliente))}</td>
+      <td>${escapeHtml(formatarNome(p.nome_vendedor))}</td>
+      <td class="num">${fmtCurrency(valorDoPedido(p))}</td>
+      <td>${fmtDate(p.data_hora_inclusao)}</td>
+      <td><span class="tempo-cell"><span class="dot ${dotCls}"></span>${dias}</span></td>
+    </tr>`;
+  };
+
+  const shown = rows.slice(0, CONFIG.MAX_LINHAS_TABELA);
+  document.getElementById('tableEstagioView').innerHTML = shown.map(linhaHtml).join('');
+
+  MODAL_DATA.estagioView = {
+    titulo: 'Em separação (>1 dia)',
+    theadClass: 'th-amarelo',
+    thead: '<tr><th>pd</th><th>cliente</th><th>vendedor</th><th class="num">valor</th><th>data fat.</th><th class="num">dias</th></tr>',
+    body: rows.map(linhaHtml).join('')
+  };
+}
+
+/* ---------------------- render: painel "sem intelipost por transportadora" ---------------------- */
+function renderPainelSemIntelipostTransp(){
+  const rows = semIntelipostPorTransportadora();
+  const totalQtde = rows.reduce((acc, r) => acc + r.qtde, 0);
+  const totalValor = rows.reduce((acc, r) => acc + r.valor, 0);
+  document.querySelector('#badgeSemIntelipost .num').textContent = totalQtde;
+
+  /* painel compacto: só transportadora + quantidade (fiel ao layout de
+     referência); valor total e linha de TOTAL ficam disponíveis no
+     modal "Expandir", sem perder a informação. */
+  const linhaCompacta = r => `
+    <tr>
+      <td>${escapeHtml(formatarNome(r.transportadora))}</td>
+      <td class="num">${r.qtde}</td>
+    </tr>`;
+  document.getElementById('tableSemIntelipostTransp').innerHTML = rows.map(linhaCompacta).join('');
+
+  const linhaCompleta = r => `
+    <tr>
+      <td>${escapeHtml(formatarNome(r.transportadora))}</td>
+      <td class="num">${r.qtde}</td>
+      <td class="num">${fmtCurrency(r.valor)}</td>
+    </tr>`;
+  const totalRow = `
+    <tr class="total-row">
+      <td>TOTAL</td>
+      <td class="num">${totalQtde}</td>
+      <td class="num">${fmtCurrency(totalValor)}</td>
+    </tr>`;
+
+  MODAL_DATA.semIntelipostTransp = {
+    titulo: 'Não vinculados',
+    theadClass: 'th-neutro',
+    thead: '<tr><th>transportadora</th><th class="num">pedidos</th><th class="num">valor total</th></tr>',
+    body: rows.map(linhaCompleta).join('') + totalRow
+  };
+}
+
+/* ---------------------- render: painel "pedidos sem envio" ---------------------- */
+function renderPainelSemEnvio(){
+  const rows = pedidosSemEnvioDetalhado(CONFIG.INTELIPOST_CRIADO_DIAS_MIN);
+  const criadoCount = rows.filter(r => String(r.flagsituacao) === '801').length;
+  const despachadoCount = rows.filter(r => String(r.flagsituacao) === '811').length;
+
+  document.querySelector('#badgeSemEnvio .num').textContent = rows.length;
+  document.getElementById('pillCriado').textContent = `C: ${criadoCount}`;
+  document.getElementById('pillDespachado').textContent = `D: ${despachadoCount}`;
+
+  /* letra C/D embutida ao lado da data (em vez de uma coluna de status
+     separada), fiel ao layout de referência */
+  const linhaHtml = p => {
+    const letra = String(p.flagsituacao) === '811' ? 'D' : 'C';
+    const dotCls = p.dias_sem_envio > 2 ? 'red' : 'amber';
+    return `
+    <tr>
+      <td>${escapeHtml(p.id_pedido)}</td>
+      <td>${escapeHtml(formatarNome(lookupCliente(p.id_pedido)))}</td>
+      <td>${escapeHtml(formatarNome(lookupVendedor(p.id_pedido)))}</td>
+      <td>${escapeHtml(formatarNome(p.transportadora))}</td>
+      <td>${fmtDate(p.dt_pedido_emissao)}<span class="letra-status">${letra}</span></td>
+      <td><span class="tempo-cell"><span class="dot ${dotCls}"></span>${p.dias_sem_envio}</span></td>
+    </tr>`;
+  };
+
+  const shown = rows.slice(0, CONFIG.MAX_LINHAS_TABELA_LARGA);
+  document.getElementById('tableSemEnvio').innerHTML = shown.map(linhaHtml).join('');
+
+  const restante = rows.length - shown.length;
+  document.getElementById('semEnvioMoreNote').textContent =
+    restante > 0 ? `+ ${restante} pedido(s) não exibido(s)` : '';
+
+  MODAL_DATA.semEnvio = {
+    titulo: 'Sem envio > 2 dias (status criado/despachado)',
+    theadClass: 'th-neutro',
+    thead: '<tr><th>pd</th><th>cliente</th><th>vendedor</th><th>transp</th><th>data</th><th class="num">dias</th></tr>',
+    body: rows.map(linhaHtml).join('')
+  };
+}
+
+/* ---------------------- render: painel "mo_3104" (faturado e não entregue) ---------------------- */
+function renderPainelMo3104(){
+  const rows = state.mo3104.slice().sort((a, b) => num(b.diferenca) - num(a.diferenca));
+  document.querySelector('#badgeMo3104 .num').textContent = countDistinctPedidos(rows);
+
+  const linhaHtml = p => `
+    <tr>
+      <td>${escapeHtml(p.pedido)}</td>
+      <td>${escapeHtml(formatarNome(lookupCliente(p.pedido)))}</td>
+      <td>${escapeHtml(formatarNome(lookupVendedor(p.pedido)))}</td>
+      <td class="num">${intNum(p.diferenca).toLocaleString('pt-BR')}</td>
+      <td>${fmtDate(p.data_emissao)}</td>
+    </tr>`;
+
+  const shown = rows.slice(0, CONFIG.MAX_LINHAS_TABELA);
+  document.getElementById('tableMo3104').innerHTML = shown.map(linhaHtml).join('');
+
+  const restante = rows.length - shown.length;
+  document.getElementById('mo3104MoreNote').textContent =
+    restante > 0 ? `+ ${restante} pedido(s) não exibido(s)` : '';
+
+  MODAL_DATA.mo3104 = {
+    titulo: 'Sem entrega total (mo_3104)',
+    theadClass: 'th-neutro',
+    thead: '<tr><th>pd</th><th>cliente</th><th>vendedor</th><th class="num">falt</th><th>data uc</th></tr>',
+    body: rows.map(linhaHtml).join('')
+  };
+}
+
+/* roda cada função isoladamente: se uma falhar, as demais continuam
+   executando em vez de travar o painel inteiro */
+function safeRender(fn){
+  try{ fn(); }catch(err){ console.error(`Erro em ${fn.name}:`, err); }
+}
+
+function renderAll(){
+  safeRender(renderHeader);
+  safeRender(renderStatusCards);
+  safeRender(renderPainelFaturadoNaoSeparado);
+  safeRender(renderPainelEstagioView);
+  safeRender(renderPainelSemIntelipostTransp);
+  safeRender(renderPainelSemEnvio);
+  safeRender(renderPainelMo3104);
+}
+
+/* ---------------------- inicialização ---------------------- */
+fetchAll();
+setInterval(fetchAll, CONFIG.REFRESH_INTERVAL_MS);
+
+/* a TV não tem F5: recarrega a página inteira de tempos em tempos, assim
+   qualquer atualização publicada no arquivo é aplicada automaticamente */
+if(CONFIG.AUTO_RELOAD_MS > 0){
+  setTimeout(() => location.reload(), CONFIG.AUTO_RELOAD_MS);
+}
+</script>
+</body>
+</html>

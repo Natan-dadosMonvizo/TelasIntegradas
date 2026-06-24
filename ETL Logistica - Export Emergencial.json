@@ -1,0 +1,515 @@
+{
+  "name": "ETL Logistica - Export Emergencial (manual, direto do ERP)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        400,
+        600
+      ],
+      "id": "manual-trigger-emergencial",
+      "name": "Quando clicar em Executar workflow"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ULTIMO_ESTAGIO AS\n(\n  SELECT\n    H.FILIAL,\n    H.PEDIDO,\n    H.SEQUENCIA,\n    H.FLAGTIPOALTERACAO,\n    H.OBSERVACAO,\n    H.DATAHORAINCLUSAO,\n    H.DATAHORAALTERACAO,\n    P.DATA_EMISSAO,\n    P.STATUS,\n    ROW_NUMBER() OVER\n    (\n      PARTITION BY\n        H.FILIAL,\n        H.PEDIDO\n      ORDER BY\n        H.SEQUENCIA DESC,\n        H.DATAHORAINCLUSAO DESC -- Desempate para garantir unicidade\n    ) AS RN\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n  INNER JOIN VDPVENDAC P WITH (NOLOCK)\n    ON P.PEDIDO = H.PEDIDO\n  WHERE P.DATA_EMISSAO >= '2026-01-01'\n)\nSELECT \n  FILIAL AS filial,\n  PEDIDO AS pedido,\n  STATUS AS status,\n  SEQUENCIA AS sequencia,\n  FLAGTIPOALTERACAO AS flag_tipo_alteracao,\n  DATA_EMISSAO AS data_pedido,\n  DATAHORAINCLUSAO AS data_hora_inclusao,\n  OBSERVACAO AS observacao,\n  CASE\n    WHEN OBSERVACAO LIKE '%FATURAMENTO E ENTREGA%' THEN 'FATURAMENTO E ENTREGA'\n    WHEN OBSERVACAO LIKE '%FATURAMENTO APROVADO%' THEN 'FATURAMENTO APROVADO'\n    WHEN OBSERVACAO LIKE '%FATURAMENTO REPROVADO%' THEN 'FATURAMENTO REPROVADO'\n    WHEN OBSERVACAO LIKE '%SEPARAÇÃO%' THEN 'SEPARAÇÃO'\n    WHEN OBSERVACAO LIKE '%SEPARADO%' THEN 'SEPARADO'\n    WHEN OBSERVACAO LIKE '%FATURAMENTO%' THEN 'FATURADO'\n    ELSE 'OUTROS'\n  END AS status_resumo,\n  DATAHORAALTERACAO AS data_hora_alteracao,\n  DATEDIFF(DAY, DATAHORAINCLUSAO, GETDATE()) AS dias_no_estagio,\n  GETDATE() AS atualizado_em\nFROM ULTIMO_ESTAGIO\nWHERE RN = 1\nORDER BY\n  dias_no_estagio DESC,\n  pedido;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        200
+      ],
+      "id": "erp-pd_ultimo_estagio",
+      "name": "ERP - Buscar pd_ultimo_estagio (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "pd_ultimo_estagio.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        200
+      ],
+      "id": "export-pd_ultimo_estagio",
+      "name": "Exportar pd_ultimo_estagio.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH NF AS\n(\n  SELECT\n    N.PEDIDO,\n    MAX(N.NOTA_FISCAL) AS NOTA_FISCAL,\n    MAX(N.DATA_EMISSAO) AS DT_FATURAMENTO\n  FROM VDNOTAC N WITH (NOLOCK)\n  WHERE N.FILIAL = 11\n    AND N.MOVIMENTACAO_FISCAL IN\n    (\n      5102,\n      6102,\n      6108,\n      6117,\n      6923\n    )\n  GROUP BY\n    N.PEDIDO\n)\n\nSELECT\n  PVI.PEDIDO as pedido,\n  PVC.DATA_EMISSAO AS data_emissao,\n  PVI.PESSOA AS cliente,\n  PES.NOME AS nome_cliente,\n  PVC.VENDEDOR as vendedor,\n  PVE.NOME AS nome_vendedor,\n  PVC.valor_total,\n\n  SUM(PVI.QUANTIDADEFATURADA) AS qtd_faturada,\n  SUM(PVI.QTDE_ENTREGUE) AS qtd_entregue,\n  SUM(PVI.QUANTIDADEFATURADA - PVI.QTDE_ENTREGUE) AS diferenca,\n\n  NF.NOTA_FISCAL as nota_fiscal,\n  NF.DT_FATURAMENTO as dt_faturamento,\n\n  GETDATE() AS atualizado_em\n\nFROM VDPVENDAI PVI WITH (NOLOCK)\n\nLEFT JOIN CGPESSOA PES WITH (NOLOCK)\n  ON PES.PESSOA = PVI.PESSOA\n\nLEFT JOIN VDPVENDAC PVC WITH (NOLOCK)\n  ON PVC.EMPRESA = PVI.EMPRESA\n AND PVC.FILIAL = PVI.FILIAL\n AND PVC.COLECAO = PVI.COLECAO\n AND PVC.PESSOA = PVI.PESSOA\n AND PVC.PEDIDO = PVI.PEDIDO\n\nLEFT JOIN CGPESSOA PVE WITH (NOLOCK)\n  ON PVE.PESSOA = PVC.VENDEDOR\n\nLEFT JOIN NF\n  ON NF.PEDIDO = PVC.PEDIDOSEQUENCIAL\n\nWHERE PVC.DEPARTAMENTOVENDEDOR = 25\n  AND PVI.QUANTIDADEFATURADA > PVI.QTDE_ENTREGUE\n\nGROUP BY\n  PVI.PEDIDO,\n  PVC.DATA_EMISSAO,\n  PVI.PESSOA,\n  PES.NOME,\n  PVC.VENDEDOR,\n  PVE.NOME,\n  PVC.VALOR_TOTAL,\n  NF.NOTA_FISCAL,\n  NF.DT_FATURAMENTO\n\nORDER BY\n  NF.NOTA_FISCAL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        420
+      ],
+      "id": "erp-mo_3104",
+      "name": "ERP - Buscar mo_3104 (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "mo_3104.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        420
+      ],
+      "id": "export-mo_3104",
+      "name": "Exportar mo_3104.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  PVC.PEDIDO AS id_pedido,\n  PVC.DATA_EMISSAO AS dt_pedido_emissao,\n  PVC.PESSOA AS id_cliente,\n  PVC.VENDEDOR AS id_vendedor,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  T.NOME AS transportadora,\n  GETDATE() AS atualizado_em,\n  PVE.NOME AS nome_vendedor\nFROM VDPVENDAC PVC WITH (NOLOCK)\nINNER JOIN CGPESSOA T WITH (NOLOCK)\n  ON T.PESSOA = PVC.TRANSPORTADORA\nLEFT JOIN CGPESSOA PVE WITH (NOLOCK)\n  ON PVE.PESSOA = PVC.VENDEDOR\nWHERE PVC.DATA_EMISSAO >= '2026-01-01'\n  AND PVC.STATUS = 'E'\n  AND PVC.TRANSPORTADORA IN (5261, 10252, 53287, 56802, 71820, 74375, 77582, 125081, 145688)\n  AND NOT EXISTS\n  (\n    SELECT 1\n    FROM VDPVENDACODIGOAUXILIAR COD WITH (NOLOCK)\n    WHERE COD.PEDIDO = PVC.PEDIDO\n      AND COD.FILIAL = PVC.FILIAL\n      AND COD.FLAGPERFILCODIGO = 801\n  );",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        640
+      ],
+      "id": "erp-pd_sem_intelipost",
+      "name": "ERP - Buscar pd_sem_intelipost (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "pd_sem_intelipost.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        640
+      ],
+      "id": "export-pd_sem_intelipost",
+      "name": "Exportar pd_sem_intelipost.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  PVC.PEDIDO AS id_pedido,\n  PVC.DATA_EMISSAO AS dt_pedido_emissao,\n  PVC.PESSOA AS id_cliente,\n  PVC.VENDEDOR AS id_vendedor,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  COD.FLAGPERFILCODIGO AS flagperfilcodigo,\n  COD.FLAGSITUACAO AS flagsituacao,\n  CASE\n    WHEN COD.FLAGSITUACAO = 801 THEN 'CRIADO'\n    WHEN COD.FLAGSITUACAO = 811 THEN 'DESPACHADO'\n    ELSE 'OUTRO'\n  END AS desc_situacao,\n  T.NOME AS transportadora\nFROM VDPVENDAC PVC WITH (NOLOCK)\nINNER JOIN CGPESSOA T WITH (NOLOCK)\n  ON T.PESSOA = PVC.TRANSPORTADORA\nINNER JOIN VDPVENDACODIGOAUXILIAR COD WITH (NOLOCK)\n  ON COD.PEDIDO = PVC.PEDIDO\n AND COD.FILIAL = PVC.FILIAL\nWHERE PVC.DATA_EMISSAO >= '2026-01-01'\n  AND PVC.STATUS = 'E'\n  AND COD.FLAGSITUACAO IN (801, 811);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        860
+      ],
+      "id": "erp-pd_criado_despachado_intelipost",
+      "name": "ERP - Buscar pd_criado_despachado_intelipost (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "pd_criado_despachado_intelipost.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        860
+      ],
+      "id": "export-pd_criado_despachado_intelipost",
+      "name": "Exportar pd_criado_despachado_intelipost.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ULTIMO_HISTORICO AS\n(\n  SELECT\n    H.FILIAL,\n    H.PEDIDO,\n    H.OBSERVACAO,\n    CASE\n      WHEN OBSERVACAO LIKE '%FATURAMENTO E ENTREGA%' THEN 'FATURAMENTO E ENTREGA'\n      WHEN OBSERVACAO LIKE '%FATURAMENTO APROVADO%' THEN 'FATURAMENTO APROVADO'\n      WHEN OBSERVACAO LIKE '%FATURAMENTO REPROVADO%' THEN 'FATURAMENTO REPROVADO'\n      WHEN OBSERVACAO LIKE '%SEPARAÇÃO%' THEN 'SEPARAÇÃO'\n      WHEN OBSERVACAO LIKE '%SEPARADO%' THEN 'SEPARADO'\n      WHEN OBSERVACAO LIKE '%FATURAMENTO%' THEN 'FATURADO'\n      ELSE 'OUTROS'\n    END AS status_resumo,\n    H.DATAHORAINCLUSAO,\n    ROW_NUMBER() OVER\n    (\n      PARTITION BY H.FILIAL, H.PEDIDO\n      ORDER BY\n        H.SEQUENCIA DESC,\n        H.DATAHORAINCLUSAO DESC\n    ) AS RN\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n)\nSELECT\n  PVI.FILIAL       AS filial,\n  PVI.PEDIDO       AS pedido,\n  PVC.DATA_EMISSAO AS data_emissao,\n  VEN.NOME         AS nome_vendedor,\n  CLI.NOME         AS nome_cliente,\n  PVC.VALOR_TOTAL  AS valor_pedido,\n  PVI.ITEM         AS item,\n  PVI.DESCRICAO    AS descricao,\n  PVI.FlagEstagio  AS flag_estagio,\n  PVI.QTDE_PEDIDA              AS qtd_pedida,\n  PVI.QuantidadeFaturada       AS qtd_faturada,\n  PVI.QTDE_ENTREGUE            AS qtd_entregue,\n  PVI.PRECO_UNITARIO           AS valor_unitario,\n  PVI.PERCENTUALDESCONTO       AS percentual_desconto,\n  PVI.VALORDESCONTO            AS valor_desconto,\n  PVI.VALOR_CUSTO              AS valor_custo,\n  (PVI.QTDE_PEDIDA * PVI.PRECO_UNITARIO)                       AS valor_bruto_item,\n  ((PVI.QTDE_PEDIDA * PVI.PRECO_UNITARIO) - PVI.VALORDESCONTO) AS valor_final_item,\n  CASE\n    WHEN PVI.FlagEstagio = 000 THEN 'AGUARDANDO VENDEDOR'\n    WHEN PVI.FlagEstagio = 051 THEN 'ESTOQUE REPROVADO'\n    WHEN PVI.FlagEstagio = 101 THEN 'AGUARDANDO APROVAÇÃO DE ESTOQUE'\n    WHEN PVI.FlagEstagio = 151 THEN 'ESTOQUE APROVADO'\n    WHEN PVI.FlagEstagio = 181 THEN 'ESTOQUE REPROVADO'\n    WHEN PVI.FlagEstagio = 201 THEN 'AGUARDANDO APROVAÇÃO DE FATURAMENTO'\n    WHEN PVI.FlagEstagio = 211 THEN 'AGUARDANDO APROVAÇÃO DE REQUISIÇÃO'\n    WHEN PVI.FlagEstagio = 251 THEN 'FATURAMENTO APROVADO'\n    WHEN PVI.FlagEstagio = 261 THEN 'REQUISIÇÃO APROVADA'\n    WHEN PVI.FlagEstagio = 281 THEN 'FATURAMENTO REPROVADO'\n    WHEN PVI.FlagEstagio = 291 THEN 'REQUISIÇÃO REPROVADA'\n    WHEN PVI.FlagEstagio = 301 THEN 'FATURADO'\n    WHEN PVI.FlagEstagio = 351 THEN 'FATURADO POR REQUISIÇÃO'\n    WHEN PVI.FlagEstagio = 401 THEN 'LIBERADO PARA SEPARAÇÃO'\n    WHEN PVI.FlagEstagio = 451 THEN 'EM SEPARAÇÃO'\n    WHEN PVI.FlagEstagio = 501 THEN 'SEPARADO'\n    WHEN PVI.FlagEstagio = 601 THEN 'ENVIADO'\n    WHEN PVI.FlagEstagio = 701 THEN 'ENTREGUE'\n    ELSE 'OUTRO'\n  END AS desc_estagio,\n  UH.DATAHORAINCLUSAO AS data_hora_inclusao,\n  UH.status_resumo     AS status_resumo_erp\nFROM VDPVENDAI PVI\nINNER JOIN VDPVENDAC PVC WITH (NOLOCK)\n  ON  PVI.empresa = PVC.empresa\n  AND PVI.filial  = PVC.filial\n  AND PVI.COLECAO = PVC.COLECAO\n  AND PVI.pessoa  = PVC.pessoa\n  AND PVI.pedido  = PVC.pedido\nINNER JOIN ULTIMO_HISTORICO UH\n  ON  UH.FILIAL = PVI.FILIAL\n  AND UH.PEDIDO = PVI.PEDIDO\n  AND UH.RN = 1\nINNER JOIN CGPESSOA VEN ON PVC.VENDEDOR = VEN.PESSOA\nINNER JOIN CGPESSOA CLI ON PVC.PESSOA = CLI.PESSOA\nWHERE PVC.DATA_EMISSAO >= '2026-01-01';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        1080
+      ],
+      "id": "erp-pd_item_estagio",
+      "name": "ERP - Buscar pd_item_estagio (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "pd_item_estagio.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        1080
+      ],
+      "id": "export-pd_item_estagio",
+      "name": "Exportar pd_item_estagio.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH BASE AS\n(\n  SELECT\n    H.FILIAL AS filial,\n    H.PEDIDO AS pedido,\n    P.STATUS AS status,\n    P.VALOR_TOTAL AS valor_pedido,\n    H.SEQUENCIA AS sequencia,\n    H.FLAGTIPOALTERACAO AS flag_tipo_alteracao,\n    P.DATA_EMISSAO AS data_pedido,\n    H.DATAHORAINCLUSAO AS data_hora_inclusao,\n    H.DATAHORAALTERACAO AS data_hora_alteracao,\n    H.OBSERVACAO AS observacao,\n    CASE\n      WHEN H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n        OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      THEN 'EM SEPARAÇÃO'\n      WHEN H.OBSERVACAO LIKE '%FATURAMENTO%'\n      THEN 'FATURADO'\n      ELSE 'OUTROS'\n    END AS status_resumo,\n    DATEDIFF(DAY, H.DATAHORAINCLUSAO, GETDATE()) AS dias_desde_evento,\n    GETDATE() AS atualizado_em\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n  INNER JOIN VDPVENDAC P WITH (NOLOCK)\n    ON P.PEDIDO = H.PEDIDO\n  WHERE H.DATAHORAINCLUSAO >= DATEADD(DAY, -7, GETDATE())\n    AND (\n         H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%FATURAMENTO%'\n    )\n)\nSELECT *\nFROM BASE\nORDER BY\n  data_hora_inclusao DESC,\n  pedido,\n  sequencia;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        1300
+      ],
+      "id": "erp-historico_pedidos",
+      "name": "ERP - Buscar historico_pedidos (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "historico_pedidos.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        1300
+      ],
+      "id": "export-historico_pedidos",
+      "name": "Exportar historico_pedidos.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  PVC.EMPRESA AS id_empresa,\n  PVC.FILIAL AS id_filial,\n  PVC.DATA_EMISSAO AS dt_emissao_pedido,\n  NULL AS dt_entrega_pedido, -- TODO: confirmar coluna real no ERP (data de entrega)\n  NULL AS dt_previsao_entrega, -- TODO: confirmar coluna real no ERP (previsão de entrega)\n  NULL AS dt_recebimento_mercadoria, -- TODO: confirmar coluna real no ERP\n  NULL AS dt_inclusao, -- TODO: confirmar coluna real no ERP (data/hora de inclusão do pedido)\n  NULL AS id_forma_pagamento, -- TODO: confirmar coluna real no ERP\n  PVC.PEDIDO AS id_pedido,\n  PVC.PEDIDOSEQUENCIAL AS id_pedido_sequencial,\n  PVC.STATUS AS status_pedido,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  TRANSP.NOME AS nome_transportadora,\n  NULL AS id_coordenador, -- TODO: confirmar coluna real no ERP\n  NULL AS id_departamento, -- TODO: confirmar coluna real no ERP (departamento do pedido, distinto do departamento do vendedor)\n  PVC.DEPARTAMENTOVENDEDOR AS id_departamento_vendedor,\n  PVC.VENDEDOR AS id_vendedor,\n  VEN.NOME AS nome_vendedor,\n  PVC.PESSOA AS id_cliente,\n  CLI.NOME AS nome_cliente,\n  NULL AS cep_obra, -- TODO: confirmar coluna/tabela real no ERP (endereço da obra)\n  NULL AS cidade_obra, -- TODO: confirmar coluna/tabela real no ERP\n  NULL AS uf_obra, -- TODO: confirmar coluna/tabela real no ERP\n  PVC.VALOR_TOTAL AS valor_total_pedido,\n  NULL AS valor_total_servico, -- TODO: confirmar coluna/origem real no ERP\n  NULL AS valor_total_produto, -- TODO: confirmar coluna/origem real no ERP\n  GETDATE() AS atualizado_em\nFROM VDPVENDAC PVC WITH (NOLOCK)\nLEFT JOIN CGPESSOA TRANSP WITH (NOLOCK)\n  ON TRANSP.PESSOA = PVC.TRANSPORTADORA\nLEFT JOIN CGPESSOA VEN WITH (NOLOCK)\n  ON VEN.PESSOA = PVC.VENDEDOR\nLEFT JOIN CGPESSOA CLI WITH (NOLOCK)\n  ON CLI.PESSOA = PVC.PESSOA\nWHERE PVC.DATA_EMISSAO >= '2026-04-01';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        1520
+      ],
+      "id": "erp-f_pedido",
+      "name": "ERP - Buscar f_pedido (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "f_pedido.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        1520
+      ],
+      "id": "export-f_pedido",
+      "name": "Exportar f_pedido.xlsx"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    nf.NOTA_FISCAL                                 AS id_nota_fiscal,\n    nf.FILIAL                                      AS id_filial,\n    nf.SERIE                                       AS serie_nf,\n    nf.DATA_EMISSAO                                AS dt_nf_emissao,\n    nf.MOVIMENTACAO_FISCAL                         AS id_cfop,\n    nf.NATUREZA                                    AS natureza_operacao,\n    nf.ENTRADA_SAIDA                               AS fl_entrada_saida,\n    nf.FLAG_CANCELADO                              AS fl_cancelado,\n    CASE\n        WHEN nf.MOVIMENTACAO_FISCAL IN (\n            1201, 1202, 1410, 1411,\n            2201, 2202, 2410, 2411\n        ) THEN 'Devolucao'\n        WHEN nf.MOVIMENTACAO_FISCAL IN (\n            5101, 5102, 5103, 5104, 5105, 5106, 5109, 5110,\n            5111, 5112, 5113, 5114, 5115, 5116, 5117, 5118,\n            5119, 5120, 5122, 5123, 5124, 5125, 5401, 5402,\n            5403, 5405, 5655, 5656, 6101, 6102, 6103, 6104,\n            6105, 6106, 6107, 6108, 6109, 6110, 6111, 6112,\n            6113, 6114, 6115, 6116, 6117, 6118, 6119, 6120,\n            6122, 6123, 6124, 6125, 6401, 6402, 6403, 6404,\n            6655, 6656\n        ) THEN 'Saida'\n        WHEN nf.MOVIMENTACAO_FISCAL IN (\n            5303, 5933, 6933\n        ) THEN 'Servico'\n        ELSE ''\n    END AS tipo_movimentacao,\n    pvc.STATUS                                     AS status_pedido,\n    com.PESO                                       AS peso,\n    pvc.PEDIDO                                     AS id_pedido,\n    pvc.DATA_EMISSAO                                AS dt_pedido_emissao,\n    pvc.DEPARTAMENTOVENDEDOR                       AS departamento_vendedor,\n    nf.VENDEDOR                                    AS id_vendedor,\n    com.FlagTipoComissao                           AS id_tipo_comissao,\n    nf.PESSOA                                      AS id_cliente,\n    nfi.ITEM                                       AS id_item,\n    nfi.DESCRICAO                                  AS item_descricao,\n    est.REFERENCIA                                 AS item_referencia,\n    nfi.QUANTIDADE                                 AS qtd_item,\n    nfi.VALOR_UNITARIO                             AS valor_unitario,\n    nfi.VALOR_TOTAL                                AS valor_total,\n    NF.VALOR_TOTAL                                 AS valor_total_nf\nFROM VDNOTAC nf WITH (NOLOCK)\nINNER JOIN VDNOTAI nfi WITH (NOLOCK) ON (\n    nf.EMPRESA = nfi.EMPRESA AND\n    nf.FILIAL = nfi.FILIAL AND\n    nf.ENTRADA_SAIDA = nfi.ENTRADA_SAIDA AND\n    nf.PESSOA = nfi.PESSOA AND\n    nf.NOTA_FISCAL = nfi.NOTA_FISCAL AND\n    nf.SERIE = nfi.SERIE\n)\nLEFT OUTER JOIN vdpvendacomissao com WITH (NOLOCK) ON (\n    nf.PEDIDO = com.PedidoSequencial\n    AND com.FlagTipoComissao = 1\n)\nLEFT OUTER JOIN VDPVENDAC pvc WITH (NOLOCK) ON (\n    nf.EMPRESA = pvc.EMPRESA AND\n    nf.PEDIDO = pvc.PEDIDOSEQUENCIAL\n)\nINNER JOIN CEESTRUTURA est WITH (NOLOCK) ON (\n    nfi.EMPRESA = est.EMPRESA AND\n    nfi.ITEM = est.ITEM\n)\nWHERE\n    est.NIVEL01 = 1\n    AND nf.DATA_EMISSAO >= DATEADD(DAY, -7, CAST(GETDATE() AS DATE))\n    AND nf.DATA_EMISSAO < DATEADD(DAY, 1, CAST(GETDATE() AS DATE));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        1740
+      ],
+      "id": "erp-f_faturamento_hist7",
+      "name": "ERP - Buscar f_faturamento_hist7 (emergencial)",
+      "credentials": {
+        "microsoftSql": {
+          "id": "QTeZksxLMctUaxmb",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toXlsx",
+        "options": {
+          "fileName": "f_faturamento_hist7.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        1740
+      ],
+      "id": "export-f_faturamento_hist7",
+      "name": "Exportar f_faturamento_hist7.xlsx"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        400,
+        1900
+      ],
+      "id": "error-trigger-emergencial",
+      "name": "Quando o ETL principal falhar"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "ERP - Buscar pd_ultimo_estagio (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar pd_ultimo_estagio.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar mo_3104 (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar mo_3104.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar pd_sem_intelipost (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar pd_sem_intelipost.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar pd_criado_despachado_intelipost (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar pd_criado_despachado_intelipost.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar pd_item_estagio (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar pd_item_estagio.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar historico_pedidos (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar historico_pedidos.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar f_pedido (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar f_pedido.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar f_faturamento_hist7 (emergencial)": {
+      "main": [
+        [
+          {
+            "node": "Exportar f_faturamento_hist7.xlsx",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quando clicar em Executar workflow": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_ultimo_estagio (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar mo_3104 (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar pd_sem_intelipost (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar pd_criado_despachado_intelipost (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar pd_item_estagio (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar historico_pedidos (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar f_pedido (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar f_faturamento_hist7 (emergencial)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quando o ETL principal falhar": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_ultimo_estagio (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar mo_3104 (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar pd_sem_intelipost (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar pd_criado_despachado_intelipost (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar pd_item_estagio (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar historico_pedidos (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar f_pedido (emergencial)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ERP - Buscar f_faturamento_hist7 (emergencial)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {},
+  "nodeGroups": [],
+  "tags": []
+}
