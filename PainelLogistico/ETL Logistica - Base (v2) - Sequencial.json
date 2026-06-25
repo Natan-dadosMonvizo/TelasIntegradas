@@ -65,7 +65,7 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        26160,
+        26224,
         20992
       ],
       "id": "66c6baf6-5d6c-4db0-a5e2-b9504585f938",
@@ -93,8 +93,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        24336,
-        20624
+        24640,
+        20496
       ],
       "id": "842a5605-5b91-45ee-bfd3-a1ff9df35e67",
       "name": "Loop Lotes f_pedido"
@@ -112,26 +112,6 @@
       ],
       "id": "d09faf28-1365-4d23-9f35-472b4ccc3c9c",
       "name": "Loop Lotes f_faturamento_hist7"
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 20
-            }
-          ]
-        }
-      },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        24992,
-        20640
-      ],
-      "id": "0524ddd1-9a00-414c-a619-5cecf445c8bb",
-      "name": "Agendado a cada 20 minutos1"
     },
     {
       "parameters": {
@@ -574,7 +554,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  PVC.PEDIDO AS id_pedido,\n  PVC.DATA_EMISSAO AS dt_pedido_emissao,\n  PVC.PESSOA AS id_cliente,\n  PVC.VENDEDOR AS id_vendedor,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  COALESCE(Ultimo.DataHoraAlteracao, PVC.DATA_EMISSAO) AS data_alteracao,\n  Ultimo.FLAGPERFILCODIGO AS flagperfilcodigo,\n  Ultimo.FLAGSITUACAO AS flagsituacao,\n  CASE Ultimo.FLAGSITUACAO\n    WHEN 801 THEN 'Pedido criado'\n    WHEN 802 THEN 'Nota fiscal emitida'\n    WHEN 803 THEN 'Aguardando despacho'\n    WHEN 811 THEN 'Despachado/Coletado'\n    WHEN 812 THEN 'Em trânsito'\n    WHEN 813 THEN 'Em transferência'\n    WHEN 814 THEN 'Em rota de entrega'\n    WHEN 821 THEN 'Tentativa de entrega'\n    WHEN 822 THEN 'Reagendado'\n    WHEN 831 THEN 'Entregue'\n    WHEN 832 THEN 'Entrega realizada parcialmente'\n    WHEN 841 THEN 'Atrasado'\n    WHEN 842 THEN 'Extraviado'\n    WHEN 843 THEN 'Devolvido ao remetente'\n    WHEN 844 THEN 'Recusado pelo destinatário'\n    WHEN 851 THEN 'Solicitação de devolução'\n    WHEN 852 THEN 'Coleta reversa em andamento'\n    WHEN 853 THEN 'Devolução concluída'\n    ELSE 'OUTRO'\n  END AS desc_situacao,\n  T.NOME AS transportadora\nFROM VDPVENDAC PVC WITH (NOLOCK)\nINNER JOIN CGPESSOA T WITH (NOLOCK)\n  ON T.PESSOA = PVC.TRANSPORTADORA\nCROSS APPLY\n(\n  SELECT TOP 1\n    COD.DataHoraAlteracao,\n    COD.FLAGPERFILCODIGO,\n    COD.FLAGSITUACAO\n  FROM VDPVENDACODIGOAUXILIAR COD WITH (NOLOCK)\n  WHERE COD.PEDIDO = PVC.PEDIDO\n    AND COD.FILIAL = PVC.FILIAL\n  ORDER BY COD.DataHoraAlteracao DESC, COD.FLAGSITUACAO DESC\n) Ultimo\nWHERE PVC.DATA_EMISSAO >= '2026-01-01'\n  AND PVC.STATUS = 'E'\n  AND Ultimo.FLAGSITUACAO IN (801, 811);",
+        "query": "SELECT\n  PVC.PEDIDO AS id_pedido,\n  PVC.DATA_EMISSAO AS dt_pedido_emissao,\n  PVC.PESSOA AS id_cliente,\n  PVC.VENDEDOR AS id_vendedor,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  COALESCE(Ultimo.DataHoraAlteracao, PVC.DATA_EMISSAO) AS data_alteracao,\n  Ultimo.FLAGPERFILCODIGO AS flagperfilcodigo,\n  Ultimo.FLAGSITUACAO AS flagsituacao,\n  CASE Ultimo.FLAGSITUACAO\n    WHEN 801 THEN 'CRIADO'\n    WHEN 802 THEN 'Nota fiscal emitida'\n    WHEN 803 THEN 'Aguardando despacho'\n    WHEN 811 THEN 'DESPACHADO'\n    WHEN 812 THEN 'Em trânsito'\n    WHEN 813 THEN 'Em transferência'\n    WHEN 814 THEN 'Em rota de entrega'\n    WHEN 821 THEN 'Tentativa de entrega'\n    WHEN 822 THEN 'Reagendado'\n    WHEN 831 THEN 'Entregue'\n    WHEN 832 THEN 'Entrega realizada parcialmente'\n    WHEN 841 THEN 'Atrasado'\n    WHEN 842 THEN 'Extraviado'\n    WHEN 843 THEN 'Devolvido ao remetente'\n    WHEN 844 THEN 'Recusado pelo destinatário'\n    WHEN 851 THEN 'Solicitação de devolução'\n    WHEN 852 THEN 'Coleta reversa em andamento'\n    WHEN 853 THEN 'Devolução concluída'\n    ELSE 'OUTRO'\n  END AS desc_situacao,\n  T.NOME AS transportadora\nFROM VDPVENDAC PVC WITH (NOLOCK)\nINNER JOIN CGPESSOA T WITH (NOLOCK)\n  ON T.PESSOA = PVC.TRANSPORTADORA\nCROSS APPLY\n(\n  SELECT TOP 1\n    COD.DataHoraAlteracao,\n    COD.FLAGPERFILCODIGO,\n    COD.FLAGSITUACAO\n  FROM VDPVENDACODIGOAUXILIAR COD WITH (NOLOCK)\n  WHERE COD.PEDIDO = PVC.PEDIDO\n    AND COD.FILIAL = PVC.FILIAL\n  ORDER BY COD.DataHoraAlteracao DESC, COD.FLAGSITUACAO DESC\n) Ultimo\nWHERE PVC.DATA_EMISSAO >= '2026-01-01'\n  AND PVC.STATUS = 'E'\n  AND Ultimo.FLAGSITUACAO IN (801, 811);",
         "options": {}
       },
       "type": "n8n-nodes-base.microsoftSql",
@@ -738,7 +718,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        26352,
+        26480,
         20992
       ],
       "id": "029f3443-c938-4f6d-92dd-2d30d8c3d611",
@@ -759,7 +739,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        26528,
+        26752,
         20992
       ],
       "id": "48bb6d21-0c38-4933-86b6-f2adafd28ce0",
@@ -880,8 +860,8 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        24448,
-        20080
+        24752,
+        19952
       ],
       "id": "49b877ce-c799-4987-9b66-c3bac2eba1fc",
       "name": "ERP - Buscar f_pedido1",
@@ -910,8 +890,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        24464,
-        20336
+        24768,
+        20208
       ],
       "id": "28b77ae0-d747-4bdb-85f6-e63a85c6d986",
       "name": "Padronizar atualizado_em f_pedido1"
@@ -1198,6 +1178,16 @@
               "removed": false
             },
             {
+              "id": "inserido_em",
+              "displayName": "inserido_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
               "id": "atualizado_em",
               "displayName": "atualizado_em",
               "required": false,
@@ -1216,8 +1206,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        24688,
-        20768
+        24992,
+        20640
       ],
       "id": "def517e7-d0a5-40e1-b6b2-8c375bba9c30",
       "name": "Supabase - Upsert f_pedido1",
@@ -1237,8 +1227,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        24704,
-        20496
+        25008,
+        20368
       ],
       "id": "e83c8f8b-45ff-45b2-a49b-700629ca8212",
       "name": "Supabase - Limpar obsoletos f_pedido1",
@@ -1363,11 +1353,31 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        24128,
-        20096
+        24432,
+        19968
       ],
       "id": "a1b6d356-173b-4fb1-9e15-b80add40e2a2",
       "name": "Agendado a cada 6Horas"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 40
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        25264,
+        19952
+      ],
+      "id": "0524ddd1-9a00-414c-a619-5cecf445c8bb",
+      "name": "Agendado a cada 40 minutos"
     }
   ],
   "pinData": {},
@@ -1510,17 +1520,6 @@
         [
           {
             "node": "Supabase - Upsert f_faturamento_hist",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Agendado a cada 20 minutos1": {
-      "main": [
-        [
-          {
-            "node": "ERP - Buscar pd_ultimo_estagio1",
             "type": "main",
             "index": 0
           }
@@ -1938,6 +1937,17 @@
           }
         ]
       ]
+    },
+    "Agendado a cada 40 minutos": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar pd_ultimo_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -1946,7 +1956,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "82753014-f96e-487a-9187-58fe5411d0fd",
+  "versionId": "eec0edde-991b-4232-93b8-7c1ad831ad60",
   "meta": {
     "instanceId": "2330bfb2fda0d68d13a663836a18fa13d4100266dac35f5377e80b4c2f083789"
   },

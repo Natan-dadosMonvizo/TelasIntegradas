@@ -380,15 +380,15 @@
    CONFIGURAÇÃO — edite estes valores antes de publicar
    ===================================================================== */
 const CONFIG = {
-  SUPABASE_URL: 'https://mqtxiztjreailicujymj.supabase.co',
-  SUPABASE_ANON_KEY: 'sb_publishable_hTC8AZ2og7esLgoMoNvAxQ_RhsvGNhj',
+  SUPABASE_URL: 'https://jngcfmyvgziepvhxtmrs.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_hLAj5Wg878zRzUQASV9Aog_niHM03pv',
   REFRESH_INTERVAL_MS: 40 * 60 * 1000,   // TV atualiza a cada 40min
   ETL_ALERTA_MINUTOS: 45,           // n8n roda a cada 30min; 45 dá margem antes de alertar
   MAX_LINHAS_TABELA: 6,             // limite de linhas nos painéis pequenos (sem scroll)
   MAX_LINHAS_TABELA_LARGA: 8,       // limite de linhas na tabela larga "sem envio"
   DIAS_MIN_ESTAGIO: 1,              // pedidos "em separação"/"faturado, não separado" só contam com dias_no_estagio > este valor
   INTELIPOST_CRIADO_DIAS_MIN: 2,    // pedidos "sem envio" (criado ou despachado) só contam como atrasados com mais de este nº de dias desde a emissão
-  AUTO_RELOAD_MS: 30 * 60 * 1000  // recarrega a página inteira a cada 30 min (seguro para o limite do banco)
+  AUTO_RELOAD_MS: 60 * 60 * 1000  // recarrega a página inteira a cada 1 Hora (seguro para o limite do banco)
 };
 
 const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
