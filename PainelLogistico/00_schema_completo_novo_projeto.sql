@@ -89,9 +89,10 @@ CREATE TABLE IF NOT EXISTS public.pd_criado_despachado_intelipost (
   flagperfilcodigo   text,
   flagsituacao       text,
   desc_situacao      text,
+  data_alteracao     timestamptz,
   atualizado_em      timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT pd_criado_despachado_intelipost_pedido_situacao_uk
-    UNIQUE (id_pedido, flagsituacao)
+  CONSTRAINT pd_criado_despachado_intelipost_pedido_uk
+    UNIQUE (id_pedido)
 );
 
 CREATE INDEX IF NOT EXISTS pd_criado_despachado_intelipost_situacao_idx

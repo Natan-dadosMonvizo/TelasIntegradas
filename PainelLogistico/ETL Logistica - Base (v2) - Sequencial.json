@@ -3,6 +3,118 @@
   "nodes": [
     {
       "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26208,
+        19952
+      ],
+      "id": "bc9e55c6-00d8-4e21-988f-091caff832b3",
+      "name": "Loop Lotes pd_ultimo_estagio"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26000,
+        20208
+      ],
+      "id": "c1b7a476-96e1-4fc1-9428-1e33fa052a65",
+      "name": "Loop Lotes mo_3104"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26208,
+        20464
+      ],
+      "id": "b7524602-2754-409e-9f2e-679812eed277",
+      "name": "Loop Lotes pd_sem_intelipost"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26208,
+        20752
+      ],
+      "id": "d6f23404-8f4b-4cfa-a6b9-ebaaead0ae8a",
+      "name": "Loop Lotes pd_criado_despachado_intelipost"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26160,
+        20992
+      ],
+      "id": "66c6baf6-5d6c-4db0-a5e2-b9504585f938",
+      "name": "Loop Lotes pd_item_estagio1"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26160,
+        21248
+      ],
+      "id": "52ae0a1c-9cb2-4dca-b560-037251a1ae3c",
+      "name": "Loop Lotes historico_pedidos"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        24336,
+        20624
+      ],
+      "id": "842a5605-5b91-45ee-bfd3-a1ff9df35e67",
+      "name": "Loop Lotes f_pedido"
+    },
+    {
+      "parameters": {
+        "batchSize": 100,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        26176,
+        21504
+      ],
+      "id": "d09faf28-1365-4d23-9f35-472b4ccc3c9c",
+      "name": "Loop Lotes f_faturamento_hist7"
+    },
+    {
+      "parameters": {
         "rule": {
           "interval": [
             {
@@ -15,11 +127,11 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        17232,
-        13104
+        24992,
+        20640
       ],
-      "id": "a9a1e66d-fbbd-4d46-a13d-3d3bcbaebe14",
-      "name": "Agendado a cada 20 minutos"
+      "id": "0524ddd1-9a00-414c-a619-5cecf445c8bb",
+      "name": "Agendado a cada 20 minutos1"
     },
     {
       "parameters": {
@@ -30,11 +142,11 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17952,
-        12416
+        25712,
+        19952
       ],
-      "id": "73abf8a0-1757-45af-808b-12f9447a835f",
-      "name": "ERP - Buscar pd_ultimo_estagio",
+      "id": "0be7f36f-b1d0-43d6-8957-e88279638458",
+      "name": "ERP - Buscar pd_ultimo_estagio1",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -60,11 +172,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18144,
-        12416
+        25904,
+        19952
       ],
-      "id": "0420dc12-9f10-4d68-8a33-9cef697972fc",
-      "name": "Padronizar atualizado_em pd_ultimo_estagio"
+      "id": "ed3ee815-3323-453c-b60f-4ce91a0234eb",
+      "name": "Padronizar atualizado_em pd_ultimo_estagio1"
     },
     {
       "parameters": {
@@ -73,11 +185,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18320,
-        12416
+        26080,
+        19952
       ],
-      "id": "f2468bf2-5a4d-499e-9a20-491063e3146c",
-      "name": "Montar SQL pd_ultimo_estagio"
+      "id": "e740e6aa-3461-4ffc-a0b2-e4bd0323b067",
+      "name": "Montar SQL pd_ultimo_estagio1"
     },
     {
       "parameters": {
@@ -88,11 +200,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18560,
-        12416
+        26320,
+        19952
       ],
-      "id": "a7be507b-00a8-4260-ab14-6d8258b5e5a7",
-      "name": "Supabase - Upsert pd_ultimo_estagio",
+      "id": "4c760d11-155d-45b3-802f-43f6671e2082",
+      "name": "Supabase - Upsert pd_ultimo_estagio1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -109,11 +221,11 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17952,
-        12672
+        25712,
+        20208
       ],
-      "id": "2fdd2339-62f3-4a28-90a7-151be95ffca5",
-      "name": "ERP - Buscar mo_3104",
+      "id": "339bd65d-204a-46e6-b130-709df5a180e4",
+      "name": "ERP - Buscar mo_",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -139,11 +251,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18144,
-        12672
+        25904,
+        20208
       ],
-      "id": "567a1232-ea5d-4a81-82d0-5da8d1a61a70",
-      "name": "Padronizar atualizado_em mo_3104"
+      "id": "f1298026-3f0d-4059-897a-9b929745454e",
+      "name": "Padronizar atualizado_em mo_"
     },
     {
       "parameters": {
@@ -305,11 +417,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18320,
-        12672
+        26080,
+        20208
       ],
-      "id": "37a9fd12-9f7d-4c5c-be9d-1a98487976ef",
-      "name": "Supabase - Upsert mo_3104",
+      "id": "b718871d-579e-42eb-8195-be1b6e66a666",
+      "name": "Supabase - Upsert mo_",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -326,11 +438,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18816,
-        12416
+        26576,
+        19952
       ],
-      "id": "ef467ba6-b7ac-4606-8602-19b34d0644c6",
-      "name": "Supabase - Limpar obsoletos pd_ultimo_estagio",
+      "id": "a65f57c2-63a6-4f73-99bf-cb2b15e7c5f3",
+      "name": "Supabase - Limpar obsoletos pd_ultimo_estagio1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -347,11 +459,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18512,
-        12672
+        26272,
+        20208
       ],
-      "id": "9f302c35-b275-40b4-83d2-b4afa5e5c9b6",
-      "name": "Supabase - Limpar obsoletos mo_3104",
+      "id": "b52c87f1-b5a1-4a73-a971-f435eac38562",
+      "name": "Supabase - Limpar obsoletos mo_",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -368,11 +480,11 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17952,
-        12928
+        25712,
+        20464
       ],
-      "id": "58c96920-2af1-4b2d-9042-96352277863a",
-      "name": "ERP - Buscar pd_sem_intelipost",
+      "id": "23b879bf-0e24-4b4c-bc44-e856cd7ec16d",
+      "name": "ERP - Buscar pd_sem_intelipost1",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -398,11 +510,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18144,
-        12928
+        25904,
+        20464
       ],
-      "id": "2a99bca6-65e7-4c49-a8e1-8d6468e8b020",
-      "name": "Padronizar atualizado_em pd_sem_intelipost"
+      "id": "a82a0ca8-60f8-4f68-90f2-633d901b2532",
+      "name": "Padronizar atualizado_em pd_sem_intelipost1"
     },
     {
       "parameters": {
@@ -411,11 +523,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18320,
-        12928
+        26080,
+        20464
       ],
-      "id": "de41503c-7261-4c93-bd7f-be6c7d40412a",
-      "name": "Montar SQL pd_sem_intelipost"
+      "id": "3a890cc0-8457-45e2-99ba-06fc25e4b9ae",
+      "name": "Montar SQL pd_sem_intelipost1"
     },
     {
       "parameters": {
@@ -426,11 +538,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18560,
-        12928
+        26320,
+        20464
       ],
-      "id": "b3c0ec38-9f24-45e0-9544-1536522847c6",
-      "name": "Supabase - Upsert pd_sem_intelipost",
+      "id": "dbbf0699-93fa-4fbc-a474-25d56feca175",
+      "name": "Supabase - Upsert pd_sem_intelipost1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -447,11 +559,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18816,
-        12928
+        26576,
+        20464
       ],
-      "id": "65970951-d3e6-46a8-8d79-deda7ffe3a16",
-      "name": "Supabase - Limpar obsoletos pd_sem_intelipost",
+      "id": "ed0b337b-8934-49db-907c-d3f5c8118fcd",
+      "name": "Supabase - Limpar obsoletos pd_sem_intelipost1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -468,11 +580,11 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17952,
-        13216
+        25712,
+        20752
       ],
-      "id": "817368f4-f44f-41d9-a62e-562f43bc274e",
-      "name": "ERP - Buscar pd_criado_despachado_intelipost",
+      "id": "e2919758-295e-4b72-ac7d-937a83138294",
+      "name": "ERP - Buscar pd_criado_despachado_intelipost1",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -498,11 +610,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18144,
-        13216
+        25904,
+        20752
       ],
-      "id": "e5cc384e-d961-4945-8a62-fe7785334561",
-      "name": "Padronizar atualizado_em pd_criado_despachado_intelipost"
+      "id": "20645772-621b-4c8d-9d2b-532f76907a29",
+      "name": "Padronizar atualizado_em pd_criado_despachado_intelipost1"
     },
     {
       "parameters": {
@@ -511,11 +623,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18320,
-        13216
+        26080,
+        20752
       ],
-      "id": "43d60bdb-3153-4236-87e8-04a52985fc89",
-      "name": "Montar SQL pd_criado_despachado_intelipost"
+      "id": "151d55d4-dad7-4c36-b4d6-ea9f7f3aff12",
+      "name": "Montar SQL pd_criado_despachado_intelipost1"
     },
     {
       "parameters": {
@@ -526,11 +638,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18560,
-        13216
+        26320,
+        20752
       ],
-      "id": "8ae2ac75-eed2-4b93-8f1a-bcf7b727cad6",
-      "name": "Supabase - Upsert pd_criado_despachado_intelipost",
+      "id": "c70668f6-ba87-4ee2-b239-325a9f99cb63",
+      "name": "Supabase - Upsert pd_criado_despachado_intelipost1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -547,11 +659,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18816,
-        13216
+        26576,
+        20752
       ],
-      "id": "774bbf06-2f79-4878-8e06-aac4eab42841",
-      "name": "Supabase - Limpar obsoletos pd_criado_despachado_intelipost",
+      "id": "3d7b6cd9-9768-4200-8159-580d7c554708",
+      "name": "Supabase - Limpar obsoletos pd_criado_despachado_intelipost1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -568,11 +680,11 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17904,
-        13456
+        25664,
+        20992
       ],
-      "id": "c5c1bbf7-e416-43a7-875c-b558266036ce",
-      "name": "ERP - Buscar pd_item_estagio1",
+      "id": "59c4b535-5a7b-4784-82fd-09515598b790",
+      "name": "ERP - Buscar pd_item_estagio",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -598,11 +710,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18096,
-        13456
+        25856,
+        20992
       ],
-      "id": "d3560d04-3455-4d91-b3d0-c4232e7eeff5",
-      "name": "Padronizar atualizado_em pd_item_estagio1"
+      "id": "76e256a4-0d34-4283-9c41-9fc4990ca3e3",
+      "name": "Padronizar atualizado_em pd_item_estagio"
     },
     {
       "parameters": {
@@ -611,11 +723,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18272,
-        13456
+        26032,
+        20992
       ],
-      "id": "42d448bb-2cea-49a0-827c-57eaa607c9ab",
-      "name": "Montar SQL pd_item_estagio1"
+      "id": "3e0e27fa-9260-4d8b-bcfc-28305b2326be",
+      "name": "Montar SQL pd_item_estagio"
     },
     {
       "parameters": {
@@ -626,11 +738,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18512,
-        13456
+        26352,
+        20992
       ],
-      "id": "2e801ec6-c373-452c-bc26-d23b94f585e2",
-      "name": "Supabase - Upsert pd_item_estagio1",
+      "id": "029f3443-c938-4f6d-92dd-2d30d8c3d611",
+      "name": "Supabase - Upsert pd_item_estagio",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -647,11 +759,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18768,
-        13456
+        26528,
+        20992
       ],
-      "id": "21bae0b8-1b41-4316-bfbd-d6a565b8d7ac",
-      "name": "Supabase - Limpar obsoletos pd_item_estagio1",
+      "id": "48bb6d21-0c38-4933-86b6-f2adafd28ce0",
+      "name": "Supabase - Limpar obsoletos pd_item_estagio",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -662,17 +774,17 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH BASE AS\n(\n  SELECT\n    H.FILIAL AS filial,\n    H.PEDIDO AS pedido,\n    P.STATUS AS status,\n    P.VALOR_TOTAL AS valor_pedido,\n    H.SEQUENCIA AS sequencia,\n    H.FLAGTIPOALTERACAO AS flag_tipo_alteracao,\n    P.DATA_EMISSAO AS data_pedido,\n    H.DATAHORAINCLUSAO AS data_hora_inclusao,\n    H.DATAHORAALTERACAO AS data_hora_alteracao,\n    H.OBSERVACAO AS observacao,\n    CASE\n      WHEN H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n        OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      THEN 'EM SEPARAÇÃO'\n      WHEN H.OBSERVACAO LIKE '%FATURAMENTO%'\n      THEN 'FATURADO'\n      ELSE 'OUTROS'\n    END AS status_resumo,\n    DATEDIFF(DAY, H.DATAHORAINCLUSAO, GETDATE()) AS dias_desde_evento,\n    GETDATE() AS atualizado_em\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n  INNER JOIN VDPVENDAC P WITH (NOLOCK)\n    ON P.PEDIDO = H.PEDIDO\n  WHERE H.DATAHORAINCLUSAO >= DATEADD(DAY, -7, GETDATE())\n    AND (\n         H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%FATURAMENTO%'\n    )\n)\nSELECT *\nFROM BASE\nORDER BY\n  data_hora_inclusao DESC,\n  pedido,\n  sequencia;",
+        "query": "WITH BASE AS\n(\n  SELECT\n    H.FILIAL AS filial,\n    H.PEDIDO AS pedido,\n    P.STATUS AS status,\n    P.VALOR_TOTAL AS valor_pedido,\n    H.SEQUENCIA AS sequencia,\n    H.FLAGTIPOALTERACAO AS flag_tipo_alteracao,\n    P.DATA_EMISSAO AS data_pedido,\n    H.DATAHORAINCLUSAO AS data_hora_inclusao,\n    H.DATAHORAALTERACAO AS data_hora_alteracao,\n    H.OBSERVACAO AS observacao,\n    CASE\n      WHEN H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n        OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      THEN 'EM SEPARAÇÃO'\n      WHEN H.OBSERVACAO LIKE '%Faturamento Aprovado%'\n      THEN 'FATURADO'\n\t  WHEN H.OBSERVACAO LIKE '%SEPARADO%'\n      THEN 'SEPARADO'\n      ELSE 'OUTROS'\n    END AS status_resumo,\n    DATEDIFF(DAY, H.DATAHORAINCLUSAO, GETDATE()) AS dias_desde_evento,\n    GETDATE() AS atualizado_em\n  FROM VDPVENDAHISTORICO H WITH (NOLOCK)\n  INNER JOIN VDPVENDAC P WITH (NOLOCK)\n    ON P.PEDIDO = H.PEDIDO\n  WHERE H.DATAHORAINCLUSAO >= DATEADD(DAY, -7, GETDATE())\n    AND (\n         H.OBSERVACAO LIKE '%SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%EM SEPARAÇÃO%'\n      OR H.OBSERVACAO LIKE '%Faturamento Aprovado%'\n\t  OR H.OBSERVACAO LIKE '%SEPARADO%'\n    )\n)\nSELECT *\nFROM BASE\nORDER BY\n  data_hora_inclusao DESC,\n  pedido,\n  sequencia;",
         "options": {}
       },
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17904,
-        13712
+        25664,
+        21248
       ],
-      "id": "9d309260-7e0b-4bcb-b3d8-4a7029c47ccd",
-      "name": "ERP - Buscar historico_pedidos",
+      "id": "bf44697a-ea1b-47a4-b77a-94e60af3ff8d",
+      "name": "ERP - Buscar historico_pedidos1",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -698,11 +810,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18096,
-        13712
+        25856,
+        21248
       ],
-      "id": "cf0a8992-16ca-4115-b9ed-2e2d119b6b43",
-      "name": "Padronizar atualizado_em historico_pedidos"
+      "id": "ba58fb11-4994-42c6-ab3c-b17f426315e9",
+      "name": "Padronizar atualizado_em historico_pedidos1"
     },
     {
       "parameters": {
@@ -711,11 +823,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18272,
-        13712
+        26032,
+        21248
       ],
-      "id": "0be16a96-959a-48a5-82eb-52a37ebc9cf6",
-      "name": "Montar SQL historico_pedidos"
+      "id": "e05be425-8f39-494e-907b-2a20b65d98cb",
+      "name": "Montar SQL historico_pedidos1"
     },
     {
       "parameters": {
@@ -726,11 +838,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18512,
-        13712
+        26272,
+        21248
       ],
-      "id": "c49f6e96-f69c-4432-950e-692a8456e639",
-      "name": "Supabase - Upsert historico_pedidos",
+      "id": "768123b5-c471-47b0-9876-c4fb8efd67f9",
+      "name": "Supabase - Upsert historico_pedidos1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -747,11 +859,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18768,
-        13712
+        26528,
+        21248
       ],
-      "id": "92f10f50-ca42-49e8-9ede-55d85efad7d6",
-      "name": "Supabase - Limpar obsoletos historico_pedidos",
+      "id": "27d088a4-6545-4019-94ab-c55624f4f375",
+      "name": "Supabase - Limpar obsoletos historico_pedidos1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -762,17 +874,17 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  PVC.EMPRESA AS id_empresa,\n  PVC.FILIAL AS id_filial,\n  PVC.DATA_EMISSAO AS dt_emissao_pedido,\n  NULL AS dt_entrega_pedido, -- TODO: confirmar coluna real no ERP (data de entrega)\n  NULL AS dt_previsao_entrega, -- TODO: confirmar coluna real no ERP (previsão de entrega)\n  NULL AS dt_recebimento_mercadoria, -- TODO: confirmar coluna real no ERP\n  NULL AS dt_inclusao, -- TODO: confirmar coluna real no ERP (data/hora de inclusão do pedido)\n  NULL AS id_forma_pagamento, -- TODO: confirmar coluna real no ERP\n  PVC.PEDIDO AS id_pedido,\n  PVC.PEDIDOSEQUENCIAL AS id_pedido_sequencial,\n  PVC.STATUS AS status_pedido,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  TRANSP.NOME AS nome_transportadora,\n  NULL AS id_coordenador, -- TODO: confirmar coluna real no ERP\n  NULL AS id_departamento, -- TODO: confirmar coluna real no ERP (departamento do pedido, distinto do departamento do vendedor)\n  PVC.DEPARTAMENTOVENDEDOR AS id_departamento_vendedor,\n  PVC.VENDEDOR AS id_vendedor,\n  VEN.NOME AS nome_vendedor,\n  PVC.PESSOA AS id_cliente,\n  CLI.NOME AS nome_cliente,\n  NULL AS cep_obra, -- TODO: confirmar coluna/tabela real no ERP (endereço da obra)\n  NULL AS cidade_obra, -- TODO: confirmar coluna/tabela real no ERP\n  NULL AS uf_obra, -- TODO: confirmar coluna/tabela real no ERP\n  PVC.VALOR_TOTAL AS valor_total_pedido,\n  NULL AS valor_total_servico, -- TODO: confirmar coluna/origem real no ERP\n  NULL AS valor_total_produto, -- TODO: confirmar coluna/origem real no ERP\n  GETDATE() AS atualizado_em\nFROM VDPVENDAC PVC WITH (NOLOCK)\nLEFT JOIN CGPESSOA TRANSP WITH (NOLOCK)\n  ON TRANSP.PESSOA = PVC.TRANSPORTADORA\nLEFT JOIN CGPESSOA VEN WITH (NOLOCK)\n  ON VEN.PESSOA = PVC.VENDEDOR\nLEFT JOIN CGPESSOA CLI WITH (NOLOCK)\n  ON CLI.PESSOA = PVC.PESSOA\nWHERE PVC.DATA_EMISSAO >= '2026-04-01';",
+        "query": "SELECT\n  PVC.EMPRESA AS id_empresa,\n  PVC.FILIAL AS id_filial,\n  PVC.DATA_EMISSAO AS dt_emissao_pedido,\n  NULL AS dt_entrega_pedido, -- TODO: confirmar coluna real no ERP (data de entrega)\n  NULL AS dt_previsao_entrega, -- TODO: confirmar coluna real no ERP (previsão de entrega)\n  NULL AS dt_recebimento_mercadoria, -- TODO: confirmar coluna real no ERP\n  NULL AS dt_inclusao, -- TODO: confirmar coluna real no ERP (data/hora de inclusão do pedido)\n  NULL AS id_forma_pagamento, -- TODO: confirmar coluna real no ERP\n  PVC.PEDIDO AS id_pedido,\n  PVC.PEDIDOSEQUENCIAL AS id_pedido_sequencial,\n  PVC.STATUS AS status_pedido,\n  PVC.TRANSPORTADORA AS id_transportadora,\n  TRANSP.NOME AS nome_transportadora,\n  NULL AS id_coordenador, -- TODO: confirmar coluna real no ERP\n  NULL AS id_departamento, -- TODO: confirmar coluna real no ERP (departamento do pedido, distinto do departamento do vendedor)\n  PVC.DEPARTAMENTOVENDEDOR AS id_departamento_vendedor,\n  PVC.VENDEDOR AS id_vendedor,\n  VEN.NOME AS nome_vendedor,\n  PVC.PESSOA AS id_cliente,\n  CLI.NOME AS nome_cliente,\n  NULL AS cep_obra, -- TODO: confirmar coluna/tabela real no ERP (endereço da obra)\n  NULL AS cidade_obra, -- TODO: confirmar coluna/tabela real no ERP\n  NULL AS uf_obra, -- TODO: confirmar coluna/tabela real no ERP\n  PVC.VALOR_TOTAL AS valor_total_pedido,\n  NULL AS valor_total_servico, -- TODO: confirmar coluna/origem real no ERP\n  NULL AS valor_total_produto, -- TODO: confirmar coluna/origem real no ERP\n  GETDATE() AS atualizado_em\nFROM VDPVENDAC PVC WITH (NOLOCK)\nLEFT JOIN CGPESSOA TRANSP WITH (NOLOCK)\n  ON TRANSP.PESSOA = PVC.TRANSPORTADORA\nLEFT JOIN CGPESSOA VEN WITH (NOLOCK)\n  ON VEN.PESSOA = PVC.VENDEDOR\nLEFT JOIN CGPESSOA CLI WITH (NOLOCK)\n  ON CLI.PESSOA = PVC.PESSOA\nWHERE PVC.DATA_EMISSAO >= '2025-06-01';",
         "options": {}
       },
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17952,
-        13968
+        24448,
+        20080
       ],
-      "id": "b8169560-eea5-4ab8-bec7-102e7c0407ff",
-      "name": "ERP - Buscar f_pedido",
+      "id": "49b877ce-c799-4987-9b66-c3bac2eba1fc",
+      "name": "ERP - Buscar f_pedido1",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -798,11 +910,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18144,
-        13968
+        24464,
+        20336
       ],
-      "id": "9628deeb-72a2-4e39-add8-a8184f3fcafc",
-      "name": "Padronizar atualizado_em f_pedido"
+      "id": "28b77ae0-d747-4bdb-85f6-e63a85c6d986",
+      "name": "Padronizar atualizado_em f_pedido1"
     },
     {
       "parameters": {
@@ -1104,11 +1216,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18320,
-        13968
+        24688,
+        20768
       ],
-      "id": "608504f3-9a6b-4994-a296-c7760bde2e24",
-      "name": "Supabase - Upsert f_pedido",
+      "id": "def517e7-d0a5-40e1-b6b2-8c375bba9c30",
+      "name": "Supabase - Upsert f_pedido1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -1125,11 +1237,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18512,
-        13968
+        24704,
+        20496
       ],
-      "id": "7a9d222c-5cd7-47af-a3fd-7ca664078580",
-      "name": "Supabase - Limpar obsoletos f_pedido",
+      "id": "e83c8f8b-45ff-45b2-a49b-700629ca8212",
+      "name": "Supabase - Limpar obsoletos f_pedido1",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -1146,11 +1258,11 @@
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1.1,
       "position": [
-        17904,
-        14224
+        25680,
+        21504
       ],
-      "id": "79e7fb89-3b70-414c-8537-a618f6c302b2",
-      "name": "ERP - Buscar f_faturamento_hist7",
+      "id": "9e4ec3ef-5578-4b72-aedc-7520ad239128",
+      "name": "ERP - Buscar f_faturamento_hist",
       "credentials": {
         "microsoftSql": {
           "id": "QTeZksxLMctUaxmb",
@@ -1176,11 +1288,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        18096,
-        14224
+        25872,
+        21504
       ],
-      "id": "8f5b830c-51b6-4267-8cc5-28df33dcfca2",
-      "name": "Padronizar atualizado_em f_faturamento_hist7"
+      "id": "11d61249-9829-40ec-8eac-8c77156242ef",
+      "name": "Padronizar atualizado_em f_faturamento_hist"
     },
     {
       "parameters": {
@@ -1189,11 +1301,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        18272,
-        14224
+        26048,
+        21504
       ],
-      "id": "ac74b373-b9c1-4707-a32d-effeca3c3f17",
-      "name": "Montar SQL f_faturamento_hist7"
+      "id": "0505d14d-637e-4fb3-aa85-6c178562e3bb",
+      "name": "Montar SQL f_faturamento_hist"
     },
     {
       "parameters": {
@@ -1204,11 +1316,11 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18512,
-        14224
+        26288,
+        21504
       ],
-      "id": "a89e1f00-0232-492b-affb-ab97b82ec881",
-      "name": "Supabase - Upsert f_faturamento_hist7",
+      "id": "2d07ceb1-fd44-4bdd-bbfc-5f8b8f05e6b5",
+      "name": "Supabase - Upsert f_faturamento_hist",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
@@ -1225,433 +1337,602 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        18768,
-        14224
+        26544,
+        21504
       ],
-      "id": "eba5cf21-2b74-4813-8d59-35a87c2bd522",
-      "name": "Supabase - Limpar obsoletos f_faturamento_hist7",
+      "id": "778448cf-a1a6-4170-acd2-d9ddc5756377",
+      "name": "Supabase - Limpar obsoletos f_faturamento_hist",
       "credentials": {
         "postgres": {
           "id": "lD3wOdKHdicrOXLv",
           "name": "Postgres account"
         }
       }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        24128,
+        20096
+      ],
+      "id": "a1b6d356-173b-4fb1-9e15-b80add40e2a2",
+      "name": "Agendado a cada 6Horas"
     }
   ],
   "pinData": {},
   "connections": {
-    "ERP - Buscar pd_ultimo_estagio": {
+    "Loop Lotes pd_ultimo_estagio": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em pd_ultimo_estagio",
+            "node": "Supabase - Limpar obsoletos pd_ultimo_estagio1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert pd_ultimo_estagio1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em pd_ultimo_estagio": {
+    "Loop Lotes mo_3104": {
       "main": [
         [
           {
-            "node": "Montar SQL pd_ultimo_estagio",
+            "node": "Supabase - Limpar obsoletos mo_",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert mo_",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar SQL pd_ultimo_estagio": {
+    "Loop Lotes pd_sem_intelipost": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert pd_ultimo_estagio",
+            "node": "Supabase - Limpar obsoletos pd_sem_intelipost1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert pd_sem_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert pd_ultimo_estagio": {
+    "Loop Lotes pd_criado_despachado_intelipost": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos pd_ultimo_estagio",
+            "node": "Supabase - Limpar obsoletos pd_criado_despachado_intelipost1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert pd_criado_despachado_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar mo_3104": {
+    "Loop Lotes pd_item_estagio1": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em mo_3104",
+            "node": "Supabase - Limpar obsoletos pd_item_estagio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert pd_item_estagio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em mo_3104": {
+    "Loop Lotes historico_pedidos": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert mo_3104",
+            "node": "Supabase - Limpar obsoletos historico_pedidos1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert historico_pedidos1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert mo_3104": {
+    "Loop Lotes f_pedido": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos mo_3104",
+            "node": "Supabase - Limpar obsoletos f_pedido1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert f_pedido1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar pd_sem_intelipost": {
+    "Loop Lotes f_faturamento_hist7": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em pd_sem_intelipost",
+            "node": "Supabase - Limpar obsoletos f_faturamento_hist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Upsert f_faturamento_hist",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em pd_sem_intelipost": {
+    "Agendado a cada 20 minutos1": {
       "main": [
         [
           {
-            "node": "Montar SQL pd_sem_intelipost",
+            "node": "ERP - Buscar pd_ultimo_estagio1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar SQL pd_sem_intelipost": {
+    "ERP - Buscar pd_ultimo_estagio1": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert pd_sem_intelipost",
+            "node": "Padronizar atualizado_em pd_ultimo_estagio1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert pd_sem_intelipost": {
+    "Padronizar atualizado_em pd_ultimo_estagio1": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos pd_sem_intelipost",
+            "node": "Montar SQL pd_ultimo_estagio1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar pd_criado_despachado_intelipost": {
+    "Montar SQL pd_ultimo_estagio1": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em pd_criado_despachado_intelipost",
+            "node": "Loop Lotes pd_ultimo_estagio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em pd_criado_despachado_intelipost": {
+    "Supabase - Upsert pd_ultimo_estagio1": {
       "main": [
         [
           {
-            "node": "Montar SQL pd_criado_despachado_intelipost",
+            "node": "Loop Lotes pd_ultimo_estagio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar SQL pd_criado_despachado_intelipost": {
+    "ERP - Buscar mo_": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert pd_criado_despachado_intelipost",
+            "node": "Padronizar atualizado_em mo_",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert pd_criado_despachado_intelipost": {
+    "Padronizar atualizado_em mo_": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos pd_criado_despachado_intelipost",
+            "node": "Loop Lotes mo_3104",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar pd_item_estagio1": {
+    "Supabase - Upsert mo_": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em pd_item_estagio1",
+            "node": "Loop Lotes mo_3104",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em pd_item_estagio1": {
+    "Supabase - Limpar obsoletos pd_ultimo_estagio1": {
       "main": [
         [
           {
-            "node": "Montar SQL pd_item_estagio1",
+            "node": "ERP - Buscar mo_",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar SQL pd_item_estagio1": {
+    "Supabase - Limpar obsoletos mo_": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert pd_item_estagio1",
+            "node": "ERP - Buscar pd_sem_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert pd_item_estagio1": {
+    "ERP - Buscar pd_sem_intelipost1": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos pd_item_estagio1",
+            "node": "Padronizar atualizado_em pd_sem_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar historico_pedidos": {
+    "Padronizar atualizado_em pd_sem_intelipost1": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em historico_pedidos",
+            "node": "Montar SQL pd_sem_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em historico_pedidos": {
+    "Montar SQL pd_sem_intelipost1": {
       "main": [
         [
           {
-            "node": "Montar SQL historico_pedidos",
+            "node": "Loop Lotes pd_sem_intelipost",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar SQL historico_pedidos": {
+    "Supabase - Upsert pd_sem_intelipost1": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert historico_pedidos",
+            "node": "Loop Lotes pd_sem_intelipost",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert historico_pedidos": {
+    "Supabase - Limpar obsoletos pd_sem_intelipost1": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos historico_pedidos",
+            "node": "ERP - Buscar pd_criado_despachado_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar f_pedido": {
+    "ERP - Buscar pd_criado_despachado_intelipost1": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em f_pedido",
+            "node": "Padronizar atualizado_em pd_criado_despachado_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em f_pedido": {
+    "Padronizar atualizado_em pd_criado_despachado_intelipost1": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert f_pedido",
+            "node": "Montar SQL pd_criado_despachado_intelipost1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert f_pedido": {
+    "Montar SQL pd_criado_despachado_intelipost1": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos f_pedido",
+            "node": "Loop Lotes pd_criado_despachado_intelipost",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ERP - Buscar f_faturamento_hist7": {
+    "Supabase - Upsert pd_criado_despachado_intelipost1": {
       "main": [
         [
           {
-            "node": "Padronizar atualizado_em f_faturamento_hist7",
+            "node": "Loop Lotes pd_criado_despachado_intelipost",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Padronizar atualizado_em f_faturamento_hist7": {
+    "Supabase - Limpar obsoletos pd_criado_despachado_intelipost1": {
       "main": [
         [
           {
-            "node": "Montar SQL f_faturamento_hist7",
+            "node": "ERP - Buscar pd_item_estagio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Montar SQL f_faturamento_hist7": {
+    "ERP - Buscar pd_item_estagio": {
       "main": [
         [
           {
-            "node": "Supabase - Upsert f_faturamento_hist7",
+            "node": "Padronizar atualizado_em pd_item_estagio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Upsert f_faturamento_hist7": {
+    "Padronizar atualizado_em pd_item_estagio": {
       "main": [
         [
           {
-            "node": "Supabase - Limpar obsoletos f_faturamento_hist7",
+            "node": "Montar SQL pd_item_estagio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agendado a cada 20 minutos": {
+    "Montar SQL pd_item_estagio": {
       "main": [
         [
           {
-            "node": "ERP - Buscar pd_ultimo_estagio",
+            "node": "Loop Lotes pd_item_estagio1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos pd_ultimo_estagio": {
+    "Supabase - Upsert pd_item_estagio": {
       "main": [
         [
           {
-            "node": "ERP - Buscar mo_3104",
+            "node": "Loop Lotes pd_item_estagio1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos mo_3104": {
+    "Supabase - Limpar obsoletos pd_item_estagio": {
       "main": [
         [
           {
-            "node": "ERP - Buscar pd_sem_intelipost",
+            "node": "ERP - Buscar historico_pedidos1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos pd_sem_intelipost": {
+    "ERP - Buscar historico_pedidos1": {
       "main": [
         [
           {
-            "node": "ERP - Buscar pd_criado_despachado_intelipost",
+            "node": "Padronizar atualizado_em historico_pedidos1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos pd_criado_despachado_intelipost": {
+    "Padronizar atualizado_em historico_pedidos1": {
       "main": [
         [
           {
-            "node": "ERP - Buscar pd_item_estagio1",
+            "node": "Montar SQL historico_pedidos1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos pd_item_estagio1": {
+    "Montar SQL historico_pedidos1": {
       "main": [
         [
           {
-            "node": "ERP - Buscar historico_pedidos",
+            "node": "Loop Lotes historico_pedidos",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos historico_pedidos": {
+    "Supabase - Upsert historico_pedidos1": {
       "main": [
         [
           {
-            "node": "ERP - Buscar f_pedido",
+            "node": "Loop Lotes historico_pedidos",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Supabase - Limpar obsoletos f_pedido": {
+    "Supabase - Limpar obsoletos historico_pedidos1": {
       "main": [
         [
           {
-            "node": "ERP - Buscar f_faturamento_hist7",
+            "node": "ERP - Buscar f_faturamento_hist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ERP - Buscar f_pedido1": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em f_pedido1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em f_pedido1": {
+      "main": [
+        [
+          {
+            "node": "Loop Lotes f_pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert f_pedido1": {
+      "main": [
+        [
+          {
+            "node": "Loop Lotes f_pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Limpar obsoletos f_pedido1": {
+      "main": [
+        []
+      ]
+    },
+    "ERP - Buscar f_faturamento_hist": {
+      "main": [
+        [
+          {
+            "node": "Padronizar atualizado_em f_faturamento_hist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Padronizar atualizado_em f_faturamento_hist": {
+      "main": [
+        [
+          {
+            "node": "Montar SQL f_faturamento_hist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar SQL f_faturamento_hist": {
+      "main": [
+        [
+          {
+            "node": "Loop Lotes f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Upsert f_faturamento_hist": {
+      "main": [
+        [
+          {
+            "node": "Loop Lotes f_faturamento_hist7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendado a cada 6Horas": {
+      "main": [
+        [
+          {
+            "node": "ERP - Buscar f_pedido1",
             "type": "main",
             "index": 0
           }
@@ -1665,7 +1946,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "bbc52532-ab5c-437b-a306-d5258e1fec01",
+  "versionId": "82753014-f96e-487a-9187-58fe5411d0fd",
   "meta": {
     "instanceId": "2330bfb2fda0d68d13a663836a18fa13d4100266dac35f5377e80b4c2f083789"
   },

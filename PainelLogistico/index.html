@@ -115,6 +115,7 @@
   .dash-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:1.4vh 1.2vw;}
   .dash-grid .empty-slot{visibility:hidden;}
   .panel{
+    position:relative;
     flex:1;min-width:0;min-height:0;border-radius:14px;background:var(--panel-bg);
     border:1px solid var(--border);
     padding:1.2vh 1.1vw;display:flex;flex-direction:column;
@@ -122,7 +123,7 @@
   .panel-wide{flex:2.6;}
   .sidebar-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:1.1vh;}
   .sidebar-col .panel{flex:1;}
-  .panel-header-row{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;margin-bottom:.8vh;gap:.5vw;flex-wrap:wrap;}
+  .panel-header-row{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;margin-bottom:.8vh;gap:.5vw;flex-wrap:wrap;padding-right:2.4em;}
   .section-label{
     font-size:clamp(9.5px,0.78vw,13px);color:var(--text-secondary);
     text-transform:uppercase;letter-spacing:.04em;font-weight:700;
@@ -144,13 +145,22 @@
     font-weight:800;font-size:clamp(11px,0.95vw,16px);padding:.3vh .8vw;
   }
   .panel-count-pill.hidden-pill{display:none;}
-  /* botão "expandir" = ícone X, sempre no canto superior direito do painel */
+/* botão "expandir" = ícone X, sempre no canto superior direito do painel */
+  /* sempre fixo no canto superior direito do painel, mesmo se o resto do
+     cabeçalho (chip + pills) quebrar linha em painéis mais cheios */
   .btn-close-expand{
-    border:1px solid var(--border);background:#fff;color:var(--text-secondary);
+    position:absolute;top:1.2vh;right:1.1vw;
+    border:1px solid var(--border);
+    background:rgba(0,0,0,.05); /* Fundo um pouco mais escuro (cinza claro) */
+    color:var(--text-secondary);
     border-radius:8px;width:1.9em;height:1.9em;display:inline-flex;align-items:center;justify-content:center;
-    font-size:.8em;font-weight:800;cursor:pointer;flex-shrink:0;line-height:1;
+    font-size:.8em;font-weight:800;cursor:pointer;flex-shrink:0;line-height:1;z-index:2;
   }
-  .btn-close-expand:hover{background:rgba(0,0,0,.07);color:var(--text-primary);}
+  .btn-close-expand:hover{
+    background:rgba(0,0,0,.12); /* Fundo ainda mais escuro ao passar o mouse */
+    color:var(--text-primary);
+  }
+  .btn-close-expand svg{width:62%;height:62%;}
   .letra-status{font-weight:800;color:var(--text-secondary);margin-left:.35em;font-size:.85em;}
   .badge-group{display:flex;align-items:center;gap:.5vw;flex-wrap:wrap;}
   .badge-count{
@@ -169,9 +179,9 @@
   .pill-despachado{background:rgba(125,125,178,.22);color:#4c4c78;}
   .table-wrap{flex:1;min-height:0;overflow:hidden;}
   table{width:100%;border-collapse:collapse;font-size:clamp(9px,0.82vw,14px);}
-  table th{font-size:clamp(7.5px,0.62vw,10px);color:var(--text-secondary);text-align:left;font-weight:600;padding:.4vh 0;text-transform:uppercase;letter-spacing:.02em;}
+  table th{font-size:clamp(7.5px,0.62vw,10px);color:var(--text-secondary);text-align:left;font-weight:600;padding:.4vh .5vw;text-transform:uppercase;letter-spacing:.02em;}
   table th.num,table td.num{text-align:right;}
-  table td{padding:.5vh 0;border-top:1px solid var(--border);}
+  table td{padding:.5vh .5vw;border-top:1px solid var(--border);}
   /* cor de fundo do cabeçalho da tabela = cor do card principal associado (1:1 por nome) */
   table thead.th-roxo th,table thead.th-amarelo th,table thead.th-neutro th{padding:.4vh .5vw;}
   table thead.th-roxo th{background:var(--roxo);color:#ffffff;}
@@ -192,6 +202,9 @@
   .modal-title{font-size:clamp(13px,1.1vw,18px);font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-primary);}
   .modal-close{border:none;background:var(--border);color:var(--text-primary);border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;flex-shrink:0;}
   .modal-close:hover{background:var(--accent-danger);color:#fff;}
+  .modal-header-actions{display:flex;align-items:center;gap:.6vw;}
+  .btn-export-csv{border:1px solid var(--border);background:#fff;color:var(--text-secondary);border-radius:8px;padding:.4vh 1vw;font-size:clamp(9px,0.72vw,12px);font-weight:700;cursor:pointer;}
+  .btn-export-csv:hover{background:rgba(0,0,0,.06);color:var(--text-primary);}
   .modal-body{overflow:auto;flex:1;}
   .modal-body table{width:100%;}
   .modal-body td,.modal-body th{padding:.7vh .5vw;}
@@ -251,7 +264,7 @@
           <span class="panel-chip roxo">Faturados e não separados (&gt;1 dia)</span>
           <div class="header-actions">
             <span class="panel-count-pill" id="badgeFaturadoNaoSeparado"><span class="num">0</span></span>
-            <button class="btn-close-expand" onclick="abrirModal('faturadoNaoSeparado')" aria-label="Expandir">&#10005;</button>
+            <button class="btn-close-expand" onclick="abrirModal('faturadoNaoSeparado')" aria-label="Expandir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg></button>
           </div>
         </div>
         <div class="table-wrap">
@@ -268,7 +281,7 @@
           <span class="panel-chip amarelo">Em separação (&gt;1 dia)</span>
           <div class="header-actions">
             <span class="panel-count-pill" id="badgeEstagioView"><span class="num">0</span></span>
-            <button class="btn-close-expand" onclick="abrirModal('estagioView')" aria-label="Expandir">&#10005;</button>
+            <button class="btn-close-expand" onclick="abrirModal('estagioView')" aria-label="Expandir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg></button>
           </div>
         </div>
         <div class="table-wrap">
@@ -285,7 +298,7 @@
           <span class="panel-chip laranja">Sem entrega total (mo_3104)</span>
           <div class="header-actions">
             <span class="panel-count-pill" id="badgeMo3104"><span class="num">0</span></span>
-            <button class="btn-close-expand" onclick="abrirModal('mo3104')" aria-label="Expandir">&#10005;</button>
+            <button class="btn-close-expand" onclick="abrirModal('mo3104')" aria-label="Expandir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg></button>
           </div>
         </div>
         <div class="table-wrap">
@@ -303,7 +316,7 @@
           <div class="header-actions">
             <span class="panel-count-pill hidden-pill" id="badgeSemEnvio"><span class="num">0</span></span>
             <span class="panel-count-pill"><span id="pillCriado">C: 0</span>&nbsp;&nbsp;<span id="pillDespachado">D: 0</span></span>
-            <button class="btn-close-expand" onclick="abrirModal('semEnvio')" aria-label="Expandir">&#10005;</button>
+            <button class="btn-close-expand" onclick="abrirModal('semEnvio')" aria-label="Expandir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg></button>
           </div>
         </div>
         <div class="table-wrap">
@@ -320,12 +333,12 @@
           <span class="panel-chip verde">Não vinculados</span>
           <div class="header-actions">
             <span class="panel-count-pill" id="badgeSemIntelipost"><span class="num">0</span></span>
-            <button class="btn-close-expand" onclick="abrirModal('semIntelipostTransp')" aria-label="Expandir">&#10005;</button>
+            <button class="btn-close-expand" onclick="abrirModal('semIntelipostTransp')" aria-label="Expandir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/></svg></button>
           </div>
         </div>
         <div class="table-wrap">
           <table>
-            <thead class="th-neutro"><tr><th>transp</th><th class="num">qtd</th></tr></thead>
+            <thead class="th-neutro"><tr><th>transp</th><th>código</th><th class="num">qtd</th></tr></thead>
             <tbody id="tableSemIntelipostTransp"></tbody>
           </table>
         </div>
@@ -345,7 +358,10 @@
     <div class="modal-box">
       <div class="modal-header">
         <div class="modal-title" id="modalTitulo"></div>
-        <button class="modal-close" onclick="fecharModal()">&#10005;</button>
+        <div class="modal-header-actions">
+          <button class="btn-export-csv" onclick="exportarCsv()">Exportar CSV</button>
+          <button class="modal-close" onclick="fecharModal()">&#10005;</button>
+        </div>
       </div>
       <div class="modal-body">
         <table>
@@ -366,13 +382,13 @@
 const CONFIG = {
   SUPABASE_URL: 'https://mqtxiztjreailicujymj.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_hTC8AZ2og7esLgoMoNvAxQ_RhsvGNhj',
-  REFRESH_INTERVAL_MS: 4 * 60 * 1000,   // a cada quanto tempo busca dados novos no Supabase (reduzido de 90s pra 4min em 23/06/2026 pra economizar o orçamento de Disk IO do plano Free)
-  ETL_ALERTA_MINUTOS: 30,           // se o ETL não atualizar há mais que isso, mostra alerta
+  REFRESH_INTERVAL_MS: 40 * 60 * 1000,   // TV atualiza a cada 40min
+  ETL_ALERTA_MINUTOS: 45,           // n8n roda a cada 30min; 45 dá margem antes de alertar
   MAX_LINHAS_TABELA: 6,             // limite de linhas nos painéis pequenos (sem scroll)
   MAX_LINHAS_TABELA_LARGA: 8,       // limite de linhas na tabela larga "sem envio"
   DIAS_MIN_ESTAGIO: 1,              // pedidos "em separação"/"faturado, não separado" só contam com dias_no_estagio > este valor
   INTELIPOST_CRIADO_DIAS_MIN: 2,    // pedidos "sem envio" (criado ou despachado) só contam como atrasados com mais de este nº de dias desde a emissão
-  AUTO_RELOAD_MS: 24 * 60 * 60 * 1000  // recarrega a página inteira de tempos em tempos, pra puxar uma versão nova do arquivo sem precisar de F5 na TV
+  AUTO_RELOAD_MS: 30 * 60 * 1000  // recarrega a página inteira a cada 30 min (seguro para o limite do banco)
 };
 
 const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
@@ -931,7 +947,7 @@ function semIntelipostPorTransportadora(){
   const counts = {};
   state.semIntelipost.forEach(p => {
     const t = p.transportadora || 'Não informado';
-    if(!counts[t]) counts[t] = { transportadora: t, qtde: 0, valor: 0 };
+    if(!counts[t]) counts[t] = { transportadora: t, codigo: p.id_transportadora || '—', qtde: 0, valor: 0 };
     counts[t].qtde += 1;
     counts[t].valor += lookupValor(p.id_pedido);
   });
@@ -1151,6 +1167,25 @@ function abrirModal(chave){
 function fecharModal(){
   document.getElementById('modalOverlay').classList.remove('open');
 }
+function exportarCsv(){
+  const titulo = document.getElementById('modalTitulo').textContent || 'export';
+  const headerRow = document.querySelector('#modalThead tr');
+  const headers = headerRow ? Array.from(headerRow.children).map(th => th.textContent.trim()) : [];
+  const linhas = Array.from(document.querySelectorAll('#modalTbody tr'))
+    .map(tr => Array.from(tr.children).map(td => td.textContent.trim().replace(/\s+/g, ' ')));
+  const csv = '﻿' + [headers, ...linhas]
+    .map(linha => linha.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+    .join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${titulo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_')}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 document.addEventListener('keydown', e => { if(e.key === 'Escape') fecharModal(); });
 
 function renderPainelFaturadoNaoSeparado(){
@@ -1242,6 +1277,7 @@ function renderPainelSemIntelipostTransp(){
   const linhaCompacta = r => `
     <tr>
       <td>${escapeHtml(formatarNome(r.transportadora))}</td>
+      <td>${escapeHtml(r.codigo)}</td>
       <td class="num">${r.qtde}</td>
     </tr>`;
   document.getElementById('tableSemIntelipostTransp').innerHTML = rows.map(linhaCompacta).join('');
@@ -1249,12 +1285,14 @@ function renderPainelSemIntelipostTransp(){
   const linhaCompleta = r => `
     <tr>
       <td>${escapeHtml(formatarNome(r.transportadora))}</td>
+      <td>${escapeHtml(r.codigo)}</td>
       <td class="num">${r.qtde}</td>
       <td class="num">${fmtCurrency(r.valor)}</td>
     </tr>`;
   const totalRow = `
     <tr class="total-row">
       <td>TOTAL</td>
+      <td></td>
       <td class="num">${totalQtde}</td>
       <td class="num">${fmtCurrency(totalValor)}</td>
     </tr>`;
@@ -1262,7 +1300,7 @@ function renderPainelSemIntelipostTransp(){
   MODAL_DATA.semIntelipostTransp = {
     titulo: 'Não vinculados',
     theadClass: 'th-neutro',
-    thead: '<tr><th>transportadora</th><th class="num">pedidos</th><th class="num">valor total</th></tr>',
+    thead: '<tr><th>transportadora</th><th>código</th><th class="num">pedidos</th><th class="num">valor total</th></tr>',
     body: rows.map(linhaCompleta).join('') + totalRow
   };
 }
